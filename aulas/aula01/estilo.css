@@ -1,5 +1,134 @@
+/* Margens da pagina */
+
 *{
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+}
+body {
+    font-size: 1.6em;
+    background-color: azure;
+    color: #333;
+    display: flex; /* Para que a pagina se ajuste */
+    flex-direction: column; /* Para que os elementos fiquem um abaixo do outro*/  
+    justify-content: center;  
+    height: 100vh;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px; /* sempre usar multiplos de 8, por conta das telas de celular */
+    background-color: blue;
+    color: white;
+
+}
+
+header div {
+    display: flex;
+    align-items: center;
+}
+header img {
+    width: 50px;
+    margin: 16px;
+    cursor: pointer;
+}
+header input[type="search"]{
+    border: none;
+    border-radius: 5px;
+    padding: 8px;
+    margin-right: 16px;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    background-color: white;
+}
+nav {
+    flex: 1;
+    padding: 8px;
+    border-right: 2px solid #ccc;
+}
+
+nav ul {
+    list-style: none;
+}
+
+nav ul li {
+    margin-bottom:  16px;
+}
+
+nav ul li a {
+    text-decoration: none;
+    padding: 8px;
+    font-weight: bold;
+    color: #333;
+    display: block;
+    border-radius:  5px;
+    transition: background-color 0.3s ease;
+}
+
+nav ul li a:hover {
+    background-color: blue;
+    color: white;
+}
+
+section {
+    flex: 4;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+}
+
+article {
+    border-radius: 5px;
+    border: 2px solid #ccc;
+}
+
+.login-container {
+    flex-direction: column;
+    justify-content: center;
+    max-width: 400px;
+    margin: 16px auto;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.login-container img {
+    width: 100px;
+    margin: 0 auto;
+}
+
+.login-container h1 {
+    text-align: center;
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+input[type="email"],
+input[type="password"] {
+    margin-bottom: 8px;
+    border-radius: 5px;
+    padding: 8px;
+    width: 100%;
+}
+
+input[type="submit"]{
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: blue;
+    color: white;
+    width: 100%;
+}
+
+footer{
+    text-align: center;
 }
