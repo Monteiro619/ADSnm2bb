@@ -1,6 +1,6 @@
-function Logo () {
+function Logo (props) {
     return (
-        <img src="" alt="Logo da Aplicação" />
+        <img src={props.imagem} alt={props.texto} />
     );
 }
 
