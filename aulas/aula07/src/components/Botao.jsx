@@ -1,8 +1,7 @@
-function Botao (props) {
+
+function Botao(props) {
     return (
-        <button>
-            {props.texto}
-        </button>
+        <button>{props.texto}</button>
     );
 }
 
