@@ -11,6 +11,7 @@ function FormLogin(props) {
     const navigate = useNavigate();
 
     return (
+      
       <form>
         <InputEmail valor={email} mudaValor={(e) => setEmail(e.target.value)} />
         <InputSenha valor={senha} mudaValor={(e) => setSenha(e.target.value)} />
@@ -18,5 +19,7 @@ function FormLogin(props) {
       </form>
     );
   }
+
+
 
   export default FormLogin;
