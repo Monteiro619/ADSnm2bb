@@ -1,5 +1,5 @@
-function Listagem (props) {
-    return(
+function Listagem(props) {
+    return (
         <ul>
             <li>
                 <span>Nome</span>
@@ -15,9 +15,9 @@ function Listagem (props) {
                         {item.telefone}
                     </span>
                     <span>
-                        <button>
+                        <button onClick={() => props.onEditar(item.id)}>
                             Editar
-                        </button>     
+                        </button>
                         <button onClick={() => props.onRemover(item.id)}>
                             Remover
                         </button>
@@ -25,7 +25,7 @@ function Listagem (props) {
                 </li>
             ))}
         </ul>
-        );
+    );
 }
 
 export default Listagem;

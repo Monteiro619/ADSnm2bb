@@ -11,7 +11,11 @@ function buscarTodos() {
 }
 
 function buscar(id) {
-
+    return axios.get(`${url}/${id}`).then((response) => {
+        return {sucesso:true, dados: response.data};
+    }).catch((error) => {
+        return {sucesso:true, dados: response.data};
+    });
 }
 
 function adicionar(contato) {
@@ -21,8 +25,11 @@ function adicionar(contato) {
 }
 
 function atualizar(contato) {
-
-}
+    return axios.put(`${url}/${id}`, {nome: contato.nome, telefone: contato.telefone,}).then((response) =>{
+        return {sucesso: true, mensagem: error.mensage}
+    } ).catch((error) => {
+        return {sucesso: false, mensagem: error.mensage};
+} ) }
 
 function remover(id) {
     return axios

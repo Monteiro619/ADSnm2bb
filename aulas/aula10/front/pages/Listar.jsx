@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import Cabecalho from "../componentes/Cabecalho";
 import Conteudo from "../componentes/Conteudo";
 import Listagem from "./Listagem";
@@ -6,9 +7,23 @@ import { buscarTodos, remover } from "../services/ContatoService";
 
 
 function Listar() {
-    
+    const navigate = useNavigate();
     const [contatos, setContatos] = useState([]);
-    const [erro, setErro] = useState();
+    const [erro, setErro] = useState("");
+
+    const carregar = async( ) => {
+        const resultado = await buscarTodos();
+        if (resultado.sucesso) {
+            setContatos(resultado.dados);
+            setErro("");
+        } else {
+            setContatos([]);
+            setErro(resultado.mensagem);
+        }
+    };
+    const onEditar = (id) => {
+        navigate(`/editar/${id}`);
+    }
 
     const onRemover = async (id) => {
         const resultado = await remover(id);
@@ -29,9 +44,8 @@ function Listar() {
             <Conteudo>
                 {erro && <p>{erro}</p>}
                 <h2>Lista de Contatos</h2>
-                <Listagem  itens ={contatos} onRemover={onRemover} />
+                <Listagem  itens={contatos} onEditar={onEditar} onRemover={onRemover} />
             </Conteudo>
-            
         </>
     );
 }
