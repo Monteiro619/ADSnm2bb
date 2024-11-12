@@ -9,9 +9,13 @@ function AuthProvider(props) {
     token: null,
   });
 
+  const [msg, setMsg] = useState();
+
   const login = (dados) => {
     if (dados.email === "jose@iesb.br" && dados.senha === "abcd1234") {
       setUsuario({ email: dados.email, logado: true, token: "1a2b3c4d" });
+    } else {
+      setMsg("Login invalido");
     }
   };
 
@@ -23,7 +27,7 @@ function AuthProvider(props) {
     setUsuario({ email: dados.email, logado: true, token: "1a2b3c4d" });
   };
 
-  const context = { usuario, login, logout, registrar };
+  const context = { usuario, msg, login, logout, registrar };
 
   return (
     <AuthContext.Provider value={context}>{props.children}</AuthContext.Provider>
