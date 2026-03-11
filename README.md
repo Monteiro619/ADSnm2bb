@@ -1,35 +1,35 @@
 # Câmara 360
 
-Painel legislativo para acompanhamento da Câmara dos Deputados com foco em uso por gabinetes.
+Plataforma focada no legislativo da Câmara dos Deputados para apoio de gabinete.
+
+## O que foi reforçado nesta versão
+
+- **Validação de APIs em tempo real** na home (`/deputados`, `/orgaos`, `/proposicoes`, `/eventos`) com status visual.
+- **Links corrigidos** para páginas válidas:
+  - Órgãos: Portal Câmara (`/orgaos/{id}`) e rota API (`uri`);
+  - Proposições: ficha de tramitação oficial (`proposicoesWeb/fichadetramitacao?idProposicao=`).
+- **Mais dados de deputados** via modal detalhado:
+  - nome, partido, UF, contato, gabinete, condição eleitoral;
+  - legislaturas registradas;
+  - órgãos/comissões vinculados;
+  - últimas despesas da cota parlamentar.
+- **Integrações úteis para operação parlamentar**:
+  - Infoleg
+  - Swagger da API da Câmara
+  - Portal da Câmara
 
 ## Stack
 
 - `index.html` (arquivo único, auto-contido)
 - Tailwind CSS (CDN)
-- Chart.js (gráfico de bancadas)
-- Lucide (ícones)
-- API Dados Abertos da Câmara (`https://dadosabertos.camara.leg.br/api/v2`)
+- Chart.js
+- Lucide
+- API Dados Abertos Câmara v2
 
-## Funcionalidades
-
-- Navegação lateral fixa com views separadas:
-  - Visão Geral
-  - Monitor Digital (ao vivo)
-  - Deputados
-  - Comissões
-  - Projetos (PL)
-  - Agenda
-- Dashboard com KPIs, gráfico partidário e comissões em atividade
-- Filtros completos de deputados (nome, partido, UF e sexo)
-- Filtros de comissões (texto e tipo)
-- Controle legislativo com monitoramento de projetos via `localStorage`
-- Agenda com filtros por tipo, texto e data
-- Fallback local quando a API externa não responde
-
-## Como executar
+## Executar local
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Acesse `http://localhost:8000`.
+Acesse: `http://localhost:8000`
