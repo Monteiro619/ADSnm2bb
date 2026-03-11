@@ -3,108 +3,103 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Painel Câmara 360</title>
+    <title>Câmara 360 | Gestão Legislativa</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
-    <header class="hero">
-      <div>
-        <p class="eyebrow">Dados em tempo real · Câmara dos Deputados</p>
-        <h1>Painel Câmara 360</h1>
-        <p>
-          Monitoramento de deputados, partidos, comissões, projetos de lei e agenda
-          de plenário para suportar decisões de gabinete com inteligência de dados.
-        </p>
-      </div>
-      <div class="actions">
-        <label>
-          Atualização automática
-          <select id="refreshInterval">
-            <option value="0">Desligada</option>
-            <option value="30">A cada 30s</option>
-            <option value="60" selected>A cada 60s</option>
-            <option value="180">A cada 3 min</option>
-          </select>
-        </label>
-        <button id="manualRefresh" type="button">Atualizar agora</button>
-      </div>
-    </header>
-
-    <nav class="quick-nav" aria-label="Atalhos de seção">
-      <a href="#visao-geral">Visão geral</a>
-      <a href="#deputados">Deputados</a>
-      <a href="#comissoes">Comissões</a>
-      <a href="#projetos">Projetos</a>
-      <a href="#agenda">Agenda</a>
-    </nav>
-
-    <main>
-      <section id="visao-geral" aria-label="Indicadores"><div id="kpis" class="kpis"></div></section>
-
-      <section class="panel">
-        <div class="panel-header">
-          <h2>Distribuição por partido</h2>
-          <p>Top 10 partidos por número de deputados ativos.</p>
+  <body data-theme="dark">
+    <div class="layout">
+      <aside class="sidebar">
+        <div>
+          <h1>Câmara 360</h1>
+          <p>Gestão de gabinete</p>
         </div>
-        <div id="partyChart" class="bars"></div>
-      </section>
 
-      <section class="grid-2">
-        <article class="panel" id="comissoes">
-          <div class="panel-header">
-            <h2>Comissões mais ativas</h2>
-            <p>Órgãos legislativos com maior atividade recente.</p>
+        <nav id="sidebarNav" class="sidebar-nav">
+          <button class="nav-btn active" data-view="dashboard">Visão Geral</button>
+          <button class="nav-btn" data-view="deputados">Deputados</button>
+          <button class="nav-btn" data-view="legislativo">Controle Legislativo</button>
+          <button class="nav-btn" data-view="agenda">Agenda</button>
+          <a class="nav-btn nav-link" href="live.html">Ao Vivo</a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="themeToggle" type="button">Alternar tema</button>
+          <p id="apiStatus">API: aguardando...</p>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="top-header">
+          <div>
+            <h2 id="viewTitle">Visão Geral</h2>
+            <p>Última atualização: <span id="lastUpdate">--</span></p>
           </div>
-          <ul id="committeesList" class="rank-list"></ul>
-        </article>
-
-        <article class="panel" id="projetos">
-          <div class="panel-header">
-            <h2>Projetos de lei em destaque</h2>
-            <p>Proposições mais recentes (PL) com tramitação na casa.</p>
-          </div>
-          <ul id="billsList" class="rank-list"></ul>
-        </article>
-      </section>
-
-      <section class="panel" id="deputados">
-        <div class="panel-header">
-          <h2>Deputados ativos</h2>
-          <p>Resumo de parlamentares para navegação rápida.</p>
-        </div>
-        <div id="deputiesList" class="cards-grid"></div>
-      </section>
-
-      <section class="panel" id="agenda">
-        <div class="panel-header">
-          <h2>Agenda de comissões e plenário</h2>
-          <p>Próximos eventos para acompanhamento operacional dos gabinetes.</p>
-        </div>
-        <div class="filters">
-          <label>
-            Tipo de evento
-            <select id="eventTypeFilter">
-              <option value="todos">Todos</option>
-              <option value="comissao">Comissões</option>
-              <option value="plenario">Plenário</option>
+          <div class="header-actions">
+            <select id="refreshInterval">
+              <option value="0">Manual</option>
+              <option value="60" selected>A cada 1 min</option>
+              <option value="300">A cada 5 min</option>
             </select>
-          </label>
-          <label>
-            Buscar por tema / órgão
-            <input id="eventSearch" type="search" placeholder="Ex: orçamento, CCJ..." />
-          </label>
-        </div>
-        <div id="eventsTable"></div>
-      </section>
-    </main>
+            <button id="manualRefresh" type="button">Atualizar</button>
+          </div>
+        </header>
 
-    <footer>
-      <p>
-        Fonte: API de Dados Abertos da Câmara dos Deputados · Última atualização:
-        <strong id="lastUpdate">--</strong>
-      </p>
-      <p id="status" class="status"></p>
-    </footer>
+        <section id="view-dashboard" class="view active">
+          <div id="kpis" class="kpis"></div>
+          <div class="grid-2">
+            <article class="panel">
+              <h3>Bancadas (Top 10)</h3>
+              <div id="partyChart" class="bars"></div>
+            </article>
+            <article class="panel">
+              <h3>Comissões em alta</h3>
+              <div id="committeesHot" class="list"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-deputados" class="view">
+          <div class="panel">
+            <div class="filters">
+              <input id="deputySearch" type="search" placeholder="Buscar por nome, partido ou UF" />
+              <select id="deputyPartyFilter"><option value="">Todos os partidos</option></select>
+            </div>
+            <div id="deputiesGrid" class="cards-grid"></div>
+          </div>
+        </section>
+
+        <section id="view-legislativo" class="view">
+          <div class="grid-2">
+            <article class="panel">
+              <h3>Propostas para acompanhar</h3>
+              <div id="proposalList" class="list"></div>
+            </article>
+            <article class="panel">
+              <h3>Monitoradas pelo gabinete</h3>
+              <div id="trackedList" class="list"></div>
+            </article>
+          </div>
+          <article class="panel">
+            <h3>Últimas mudanças detectadas</h3>
+            <div id="changesList" class="list"></div>
+          </article>
+        </section>
+
+        <section id="view-agenda" class="view">
+          <article class="panel">
+            <div class="filters">
+              <select id="eventTypeFilter">
+                <option value="todos">Todos os tipos</option>
+                <option value="comissao">Comissões</option>
+                <option value="plenario">Plenário</option>
+              </select>
+              <input id="eventSearch" type="search" placeholder="Buscar tema / órgão" />
+            </div>
+            <div id="eventsTable"></div>
+          </article>
+        </section>
+      </main>
+    </div>
 
     <template id="eventRowTemplate">
       <tr>

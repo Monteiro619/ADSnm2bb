@@ -17,6 +17,17 @@ const mime = {
   '.ico': 'image/x-icon',
 };
 
+const electionFallback = {
+  available: false,
+  fonte: 'Dados locais (fallback)',
+  message: 'Não foi possível consultar endpoint externo no momento.',
+  resumo: [
+    { titulo: 'Estado', valor: 'Amapá (AP)' },
+    { titulo: 'Municípios para análise', valor: '16' },
+    { titulo: 'Uso recomendado', valor: 'Planejamento territorial de campanha' },
+  ],
+};
+
 function sendFile(filePath, res) {
   fs.readFile(filePath, (err, data) => {
     if (err) {
@@ -31,8 +42,49 @@ function sendFile(filePath, res) {
   });
 }
 
+async function handleElectionAp(res) {
+  const target = 'https://resultados.tse.jus.br/oficial/ele2022/544/dados-simplificados/ap/ap-c0001-e000544-r.json';
+
+  try {
+    const response = await fetch(target);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+
+    const candidatos = Array.isArray(payload?.cand) ? payload.cand : [];
+    const totalValidos = Number(payload?.pst || 0);
+    const top3 = candidatos
+      .slice(0, 3)
+      .map((c) => `${c.nm || 'Candidato'} (${c.sg || '-'})`)
+      .join(' · ');
+
+    const result = {
+      available: true,
+      fonte: 'TSE Resultados (ele2022)',
+      message: 'Endpoint externo acessado com sucesso.',
+      resumo: [
+        { titulo: 'UF', valor: 'Amapá (AP)' },
+        { titulo: 'Total de candidatos no recorte', valor: String(candidatos.length) },
+        { titulo: 'Percentual líder (campo pst)', valor: String(totalValidos) },
+        { titulo: 'Top 3 (amostra)', valor: top3 || 'Sem dados' },
+      ],
+    };
+
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(result));
+  } catch (error) {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ ...electionFallback, message: `${electionFallback.message} (${error.message})` }));
+  }
+}
+
 const server = http.createServer((req, res) => {
   const reqPath = decodeURIComponent((req.url || '/').split('?')[0]);
+
+  if (reqPath === '/api/elections/ap') {
+    handleElectionAp(res);
+    return;
+  }
+
   const normalized = path.normalize(reqPath).replace(/^\.\.(\/|\\|$)/, '');
   const filePath = path.join(root, normalized === '/' ? 'index.html' : normalized);
 
@@ -42,7 +94,6 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // SPA fallback para qualquer rota de preview
     sendFile(path.join(root, 'index.html'), res);
   });
 });
