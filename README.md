@@ -1,30 +1,35 @@
 # Câmara 360
 
-Painel de apoio para gabinete com foco em acompanhamento legislativo da Câmara dos Deputados.
+Painel legislativo para acompanhamento da Câmara dos Deputados com foco em uso por gabinetes.
 
-## Stack atual
+## Stack
 
-- **Arquivo único**: `index.html`
-- **UI**: Tailwind CSS (CDN)
-- **Dados**: API Dados Abertos da Câmara (v2)
+- `index.html` (arquivo único, auto-contido)
+- Tailwind CSS (CDN)
+- Chart.js (gráfico de bancadas)
+- Lucide (ícones)
+- API Dados Abertos da Câmara (`https://dadosabertos.camara.leg.br/api/v2`)
 
 ## Funcionalidades
 
-- Sidebar fixa com navegação entre views (Visão Geral, Deputados e Agenda)
-- Toggle de tema claro/escuro com persistência e preferência inicial pelo sistema operacional
-- Agenda com filtro por tipo, texto e **data específica**
-- Cards de deputados com busca/filtro por partido
-- Modal acessível com detalhes do deputado:
-  - dados básicos de contato
-  - despesas de cota parlamentar
-  - presenças recentes (quando disponíveis na rota)
+- Navegação lateral fixa com views separadas:
+  - Visão Geral
+  - Monitor Digital (ao vivo)
+  - Deputados
+  - Comissões
+  - Projetos (PL)
+  - Agenda
+- Dashboard com KPIs, gráfico partidário e comissões em atividade
+- Filtros completos de deputados (nome, partido, UF e sexo)
+- Filtros de comissões (texto e tipo)
+- Controle legislativo com monitoramento de projetos via `localStorage`
+- Agenda com filtros por tipo, texto e data
+- Fallback local quando a API externa não responde
 
-## Executar localmente
+## Como executar
 
 ```bash
 python3 -m http.server 8000
 ```
 
 Acesse `http://localhost:8000`.
-
-> O HTML é autocontido e não depende de bundler.
