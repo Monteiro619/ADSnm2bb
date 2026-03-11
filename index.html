@@ -41,7 +41,7 @@
           <button data-view="live" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm rounded-lg text-slate-600 hover:bg-slate-50"><i data-lucide="tv" class="w-4 h-4"></i> Monitor Digital</button>
           <button data-view="deputies" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm rounded-lg text-slate-600 hover:bg-slate-50"><i data-lucide="users" class="w-4 h-4"></i> Deputados</button>
           <button data-view="committees" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm rounded-lg text-slate-600 hover:bg-slate-50"><i data-lucide="landmark" class="w-4 h-4"></i> Comissões</button>
-          <button data-view="projects" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm rounded-lg text-slate-600 hover:bg-slate-50"><i data-lucide="file-text" class="w-4 h-4"></i> Projetos (PL)</button>
+          <button data-view="projects" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm rounded-lg text-slate-600 hover:bg-slate-50"><i data-lucide="file-text" class="w-4 h-4"></i> Controle Legislativo</button>
           <button data-view="agenda" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm rounded-lg text-slate-600 hover:bg-slate-50"><i data-lucide="calendar" class="w-4 h-4"></i> Agenda</button>
         </nav>
       </div>
@@ -148,7 +148,8 @@
           </div>
           <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input type="text" id="project-search" placeholder="Número ou tema" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+              <input type="text" id="project-search" placeholder="Número, tipo ou tema" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+              <select id="project-type-filter" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"><option value="">Todos os tipos</option></select>
               <select id="project-year-filter" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"><option value="">Todos os anos</option></select>
             </div>
           </div>
@@ -188,7 +189,7 @@
 
     const state = {
       currentView: 'dashboard',
-      data: { deputados: [], partidos: [], orgaos: [], proposicoes: [], eventos: [] },
+      data: { deputados: [], partidos: [], orgaos: [], proposicoes: [], eventos: [], tiposProposicao: [] },
       trackedProjects: [],
       chart: null,
       timer: null,
@@ -266,14 +267,15 @@
     async function loadDashboard(){
       document.getElementById('api-status-text').innerText = 'Sincronizando...';
       try {
-        const [deps, parts, orgs, props, events] = await Promise.all([
+        const [deps, parts, orgs, props, tipos, events] = await Promise.all([
           fetchApi('/deputados', { itens: 600, ordem:'ASC', ordenarPor:'nome' }),
           fetchApi('/partidos', { itens: 80 }),
           fetchApi('/orgaos', { itens: 300, ordem:'ASC', ordenarPor:'apelido' }),
-          fetchApi('/proposicoes', { siglaTipo:'PL', itens:50, ordem:'DESC', ordenarPor:'id' }),
+          fetchApi('/proposicoes', { itens:120, ordem:'DESC', ordenarPor:'id' }),
+          fetchApi('/referencias/proposicoes/siglaTipo').catch(() => ({ dados: [] })),
           fetchApi('/eventos', { dataInicio:new Date(Date.now()-24*3600*1000).toISOString().slice(0,10), dataFim:new Date(Date.now()+7*24*3600*1000).toISOString().slice(0,10), itens:100, ordem:'ASC', ordenarPor:'dataHoraInicio' })
         ]);
-        state.data = { deputados: deps.dados || [], partidos: parts.dados || [], orgaos: orgs.dados || [], proposicoes: props.dados || [], eventos: events.dados || [] };
+        state.data = { deputados: deps.dados || [], partidos: parts.dados || [], orgaos: orgs.dados || [], proposicoes: props.dados || [], tiposProposicao: tipos.dados || [], eventos: events.dados || [] };
         document.getElementById('api-status-dot').className = 'w-2 h-2 rounded-full bg-green-500';
         document.getElementById('api-status-text').innerText = 'Online';
       } catch (err){
@@ -293,6 +295,7 @@
       const party = document.getElementById('deputy-party-filter');
       const uf = document.getElementById('deputy-uf-filter');
       const projectYear = document.getElementById('project-year-filter');
+      const projectType = document.getElementById('project-type-filter');
       const type = document.getElementById('committee-type-filter');
 
       const parties = [...new Set(state.data.deputados.map(d=>d.siglaPartido).filter(Boolean))].sort();
@@ -303,6 +306,9 @@
 
       const years = [...new Set(state.data.proposicoes.map(p=>p.ano).filter(Boolean))].sort((a,b)=>b-a);
       projectYear.innerHTML = '<option value="">Todos os anos</option>' + years.map(v=>`<option value="${v}">${v}</option>`).join('');
+
+      const propTypes = (state.data.tiposProposicao || []).sort((a,b)=>(a.sigla||'').localeCompare(b.sigla||''));
+      projectType.innerHTML = '<option value="">Todos os tipos</option>' + propTypes.map(v=>`<option value="${v.sigla}">${v.sigla} - ${v.nome}</option>`).join('');
 
       const types = [...new Set(state.data.orgaos.map(o=>o.tipoOrgao).filter(Boolean))].sort();
       type.innerHTML = '<option value="">Todos os tipos</option>' + types.map(v=>`<option value="${v}">${v}</option>`).join('');
@@ -340,12 +346,19 @@
       grid.innerHTML = live.length ? live.slice(0,9).map(e=>`<div class="bg-white p-2 rounded-2xl border border-slate-200 shadow-lg"><div class="video-monitor flex items-center justify-center"><div class="text-slate-700/60"><i data-lucide="play-circle" class="w-16 h-16"></i></div><div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent text-white"><p class="text-[10px] font-bold uppercase text-blue-300">${e.descricaoTipo||'Evento'}</p><h4 class="text-sm font-bold truncate">${e.descricao||'Sessão Legislativa'}</h4></div></div><div class="p-3 flex justify-between"><div class="text-[11px] text-slate-500">${new Date(e.dataHoraInicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div><button class="bg-slate-900 text-white px-3 py-1 rounded-lg text-xs font-bold" data-action="open-stream">Assistir</button></div></div>`).join('') : '<div class="col-span-full p-20 text-center text-slate-400">Nenhuma sessão ativa no momento.</div>';
     }
 
+    function normalizeSex(value){
+      const txt = String(value || '').trim().toUpperCase();
+      if (txt === 'F' || txt.startsWith('FEM')) return 'F';
+      if (txt === 'M' || txt.startsWith('MAS')) return 'M';
+      return txt;
+    }
+
     function renderDeputies(){
       const search = document.getElementById('deputy-search').value.toLowerCase();
       const party = document.getElementById('deputy-party-filter').value;
       const uf = document.getElementById('deputy-uf-filter').value;
       const sex = document.getElementById('deputy-sex-filter').value;
-      const filtered = state.data.deputados.filter(d => (d.nome||'').toLowerCase().includes(search) && (!party || d.siglaPartido===party) && (!uf || d.siglaUf===uf) && (!sex || d.siglaSexo===sex));
+      const filtered = state.data.deputados.filter(d => (d.nome||'').toLowerCase().includes(search) && (!party || d.siglaPartido===party) && (!uf || d.siglaUf===uf) && (!sex || normalizeSex(d.siglaSexo)===sex));
       document.getElementById('deputies-grid').innerHTML = filtered.slice(0,48).map(d=>`<article class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-500"><button class="w-full text-left" data-action="open-deputy" data-id="${d.id}"><div class="flex items-center gap-4"><img src="${d.urlFoto||''}" alt="Deputado ${d.nome||''}" class="w-14 h-14 rounded-full object-cover bg-slate-100" /><div><h4 class="font-bold text-slate-800 text-sm leading-tight">${d.nome||''}</h4><span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">${d.siglaPartido||''} · ${d.siglaUf||''}</span></div></div><p class="text-xs text-slate-500 mt-2">Clique para ver mais informações completas do parlamentar.</p></button></article>`).join('');
     }
 
@@ -353,14 +366,15 @@
       const search = document.getElementById('committee-search').value.toLowerCase();
       const type = document.getElementById('committee-type-filter').value;
       const filtered = state.data.orgaos.filter(o => ((o.nome||'').toLowerCase().includes(search) || (o.apelido||'').toLowerCase().includes(search)) && (!type || o.tipoOrgao===type));
-      document.getElementById('committees-list').innerHTML = filtered.slice(0,60).map(o=>`<div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><div class="flex justify-between items-start mb-3"><div class="p-2 bg-blue-50 text-blue-700 rounded-lg"><i data-lucide="landmark" class="w-5 h-5"></i></div><span class="text-[9px] font-bold uppercase px-2 py-1 bg-slate-100 text-slate-500 rounded-full">${o.tipoOrgao||'Órgão'}</span></div><h4 class="font-bold text-slate-800">${o.apelido||''}</h4><p class="text-[11px] text-slate-500 mt-1">${o.nome||''}</p><div class="mt-4 pt-4 border-t border-slate-100 flex gap-2"><button class="text-blue-600 font-bold text-[10px] uppercase" data-action="open-orgao-web" data-id="${o.id||''}">Portal</button><button class="text-slate-500 font-bold text-[10px] uppercase" data-action="open-orgao-api" data-uri="${o.uri||''}">API</button></div></div>`).join('');
+      document.getElementById('committees-list').innerHTML = filtered.slice(0,60).map(o=>`<div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><div class="flex justify-between items-start mb-3"><div class="p-2 bg-blue-50 text-blue-700 rounded-lg"><i data-lucide="landmark" class="w-5 h-5"></i></div><span class="text-[9px] font-bold uppercase px-2 py-1 bg-slate-100 text-slate-500 rounded-full">${o.tipoOrgao||'Órgão'}</span></div><h4 class="font-bold text-slate-800">${o.apelido||''}</h4><p class="text-[11px] text-slate-500 mt-1">${o.nome||''}</p><div class="mt-4 pt-4 border-t border-slate-100 flex gap-2"><button class="text-blue-600 font-bold text-[10px] uppercase" data-action="open-orgao-web" data-id="${o.id||''}" data-uri="${o.uri||''}">Detalhes</button><button class="text-slate-500 font-bold text-[10px] uppercase" data-action="open-orgao-api" data-uri="${o.uri||''}">API</button></div></div>`).join('');
       lucide.createIcons();
     }
 
     function renderProjects(){
       const search = document.getElementById('project-search').value.toLowerCase();
       const year = document.getElementById('project-year-filter').value;
-      const filtered = state.data.proposicoes.filter(p => (`${p.siglaTipo} ${p.numero} ${p.ementa||''}`.toLowerCase().includes(search) && (!year || String(p.ano)===year)));
+      const type = document.getElementById('project-type-filter').value;
+      const filtered = state.data.proposicoes.filter(p => (`${p.siglaTipo} ${p.numero} ${p.ementa||''}`.toLowerCase().includes(search) && (!year || String(p.ano)===year) && (!type || p.siglaTipo===type)));
 
       const sec = document.getElementById('tracked-projects-section');
       const grid = document.getElementById('tracked-projects-grid');
@@ -372,7 +386,7 @@
       }
 
       document.getElementById('projects-table-body').innerHTML = filtered.map(p => `
-        <tr class="hover:bg-slate-50"><td class="px-6 py-4 font-bold text-blue-700 whitespace-nowrap">${p.siglaTipo} ${p.numero}/${p.ano}</td><td class="px-6 py-4">${p.ano}</td><td class="px-6 py-4 max-w-sm"><p class="line-clamp-2 text-slate-600">${p.ementa||''}</p></td><td class="px-6 py-4 text-center"><button data-action="track" data-id="${p.id}" class="p-2"><i data-lucide="star" class="w-5 h-5 ${isTracked(p.id)?'star-active':'text-slate-300'}"></i></button></td><td class="px-6 py-4"><button data-action="open-prop" data-id="${p.id}" class="text-blue-600 font-bold text-[10px] uppercase">Ver</button></td></tr>
+        <tr class="hover:bg-slate-50"><td class="px-6 py-4 font-bold text-blue-700 whitespace-nowrap">${p.siglaTipo} ${p.numero}/${p.ano}</td><td class="px-6 py-4">${p.siglaTipo || '-'} · ${p.ano}</td><td class="px-6 py-4 max-w-sm"><p class="line-clamp-2 text-slate-600">${p.ementa||''}</p></td><td class="px-6 py-4 text-center"><button data-action="track" data-id="${p.id}" class="p-2"><i data-lucide="star" class="w-5 h-5 ${isTracked(p.id)?'star-active':'text-slate-300'}"></i></button></td><td class="px-6 py-4"><button data-action="open-prop" data-id="${p.id}" class="text-blue-600 font-bold text-[10px] uppercase">Ver</button></td></tr>
       `).join('');
       lucide.createIcons();
     }
@@ -392,7 +406,7 @@
         const txt = `${e.descricaoTipo||''} ${e.descricao||''} ${e.orgao?.apelido||''}`.toLowerCase();
         return txt.includes(q);
       });
-      document.getElementById('agenda-list').innerHTML = filtered.map(e => `<div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex gap-4"><div class="min-w-[80px] text-center border-r pr-4 border-slate-100"><div class="text-[10px] font-bold text-blue-700 uppercase">${new Date(e.dataHoraInicio).toLocaleDateString('pt-BR')}</div><div class="text-lg font-bold text-slate-800">${new Date(e.dataHoraInicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div></div><div class="flex-1"><span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[9px] font-bold uppercase mb-1 inline-block">${e.descricaoTipo||''}</span><h4 class="font-bold text-sm text-slate-800">${e.orgao?.apelido||''}</h4><p class="text-xs text-slate-500">${e.descricao||'Sem pauta definida.'}</p></div></div>`).join('') || '<p class="text-center p-10 text-slate-400">Nenhum evento encontrado.</p>';
+      document.getElementById('agenda-list').innerHTML = filtered.map(e => `<div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex gap-4"><div class="min-w-[80px] text-center border-r pr-4 border-slate-100"><div class="text-[10px] font-bold text-blue-700 uppercase">${new Date(e.dataHoraInicio).toLocaleDateString('pt-BR')}</div><div class="text-lg font-bold text-slate-800">${new Date(e.dataHoraInicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div></div><div class="flex-1"><span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[9px] font-bold uppercase mb-1 inline-block">${e.descricaoTipo||''}</span><h4 class="font-bold text-sm text-slate-800">${e.orgao?.apelido|| e.orgao?.nome || ''}</h4><p class="text-xs text-slate-500">${e.descricao||'Sem pauta definida.'}</p><div class="mt-2 text-[11px] text-slate-500">Situação: <strong>${e.situacao || 'Não informada'}</strong></div></div></div>`).join('') || '<p class="text-center p-10 text-slate-400">Nenhum evento encontrado.</p>';
     }
 
     async function openDeputyDetails(id) {
@@ -403,20 +417,22 @@
       content.innerHTML = '<p class="text-slate-500">Carregando dados detalhados do deputado...</p>';
 
       try {
-        const [dep, desp, legislaturas, orgaos] = await Promise.all([
+        const [dep, desp, legislaturas, orgaos] = await Promise.allSettled([
           fetchApi(`/deputados/${id}`),
           fetchApi(`/deputados/${id}/despesas`, {itens: 8, ordem:'DESC', ordenarPor:'dataDocumento'}),
           fetchApi(`/deputados/${id}/legislaturas`, {itens: 20}),
-          fetchApi(`/deputados/${id}/orgaos`, {itens: 20}).catch(()=>({dados:[]})),
+          fetchApi(`/deputados/${id}/orgaos`, {itens: 20}),
         ]);
 
-        const d = dep?.dados || {};
+        if (dep.status !== 'fulfilled') throw dep.reason;
+
+        const d = dep.value?.dados || {};
         const u = d.ultimoStatus || {};
         const g = u.gabinete || {};
-        const ds = desp?.dados || [];
+        const ds = desp.status === 'fulfilled' ? (desp.value?.dados || []) : [];
         const total = ds.reduce((acc, i) => acc + Number(i.valorDocumento || 0), 0);
-        const legs = legislaturas?.dados || [];
-        const org = orgaos?.dados || [];
+        const legs = legislaturas.status === 'fulfilled' ? (legislaturas.value?.dados || []) : [];
+        const org = orgaos.status === 'fulfilled' ? (orgaos.value?.dados || []) : [];
 
         content.innerHTML = `
           <div class="grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4 items-start">
@@ -471,7 +487,12 @@
     document.body.addEventListener('click', (e) => {
       const t = e.target.closest('[data-action]');
       if (t?.dataset.action === 'open-stream') window.open('https://www.youtube.com/@camaradosdeputadosoficial/streams', '_blank');
-      if (t?.dataset.action === 'open-orgao-web') window.open(`https://www.camara.leg.br/orgaos/${t.dataset.id || ''}`, '_blank');
+      if (t?.dataset.action === 'open-orgao-web') {
+        const fallback = t.dataset.uri || 'https://dadosabertos.camara.leg.br/api/v2/orgaos';
+        const id = t.dataset.id || '';
+        const portalUrl = id ? `https://www.camara.leg.br/orgaos/${id}` : fallback;
+        window.open(portalUrl, '_blank') || window.open(fallback, '_blank');
+      }
       if (t?.dataset.action === 'open-orgao-api') window.open(t.dataset.uri || 'https://dadosabertos.camara.leg.br/api/v2/orgaos', '_blank');
       if (t?.dataset.action === 'open-prop') {
         const id = Number(t.dataset.id);
@@ -499,7 +520,7 @@
       if (e.key === 'Escape') closeDeputyModal();
     });
 
-    ['project-search','project-year-filter'].forEach(id=>document.getElementById(id).addEventListener(id.includes('search')?'input':'change', renderProjects));
+    ['project-search','project-year-filter','project-type-filter'].forEach(id=>document.getElementById(id).addEventListener(id.includes('search')?'input':'change', renderProjects));
     ['deputy-search','deputy-party-filter','deputy-uf-filter','deputy-sex-filter'].forEach(id=>document.getElementById(id).addEventListener(id==='deputy-search'?'input':'change', renderDeputies));
     ['committee-search','committee-type-filter'].forEach(id=>document.getElementById(id).addEventListener(id==='committee-search'?'input':'change', renderCommittees));
     ['agenda-type','agenda-date','agenda-search'].forEach(id=>document.getElementById(id).addEventListener(id==='agenda-search'?'input':'change', renderAgenda));
