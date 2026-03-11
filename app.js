@@ -59,6 +59,15 @@ const fallback = {
 const nf = new Intl.NumberFormat('pt-BR');
 const df = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 function titleByView(view) {
   return {
     dashboard: 'Visão Geral',
@@ -124,7 +133,7 @@ function renderKpis() {
     ['PL recentes', nf.format(state.proposicoes.length)],
     ['Eventos 48h', nf.format(events48h)],
   ];
-  elements.kpis.innerHTML = cards.map(([k, v]) => `<article class="kpi"><p>${k}</p><h3>${v}</h3></article>`).join('');
+  elements.kpis.innerHTML = cards.map(([k, v]) => `<article class="kpi"><p>${escapeHtml(k)}</p><h3>${escapeHtml(v)}</h3></article>`).join('');
 }
 
 function renderPartyChart() {
@@ -134,7 +143,7 @@ function renderPartyChart() {
   }, {});
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
   const max = sorted[0]?.[1] || 1;
-  elements.partyChart.innerHTML = sorted.map(([sigla, total]) => `<div class="bar-row"><strong>${sigla}</strong><div class="bar-track"><div class="bar-fill" style="width:${(total / max) * 100}%"></div></div><span>${total}</span></div>`).join('');
+  elements.partyChart.innerHTML = sorted.map(([sigla, total]) => `<div class="bar-row"><strong>${escapeHtml(sigla)}</strong><div class="bar-track"><div class="bar-fill" style="width:${(total / max) * 100}%"></div></div><span>${escapeHtml(total)}</span></div>`).join('');
 }
 
 function renderCommitteesHot() {
@@ -145,7 +154,7 @@ function renderCommitteesHot() {
   }, {});
   const items = Object.entries(mentions).sort((a, b) => b[1] - a[1]).slice(0, 8);
   elements.committeesHot.innerHTML = items.length
-    ? items.map(([n, t]) => `<div class="list-item"><strong>${n}</strong><span class="badge">${t} eventos</span></div>`).join('')
+    ? items.map(([n, t]) => `<div class="list-item"><strong>${escapeHtml(n)}</strong><span class="badge">${escapeHtml(t)} eventos</span></div>`).join('')
     : '<p>Sem dados.</p>';
 }
 
@@ -187,14 +196,14 @@ async function renderDeputies() {
   elements.deputiesGrid.innerHTML = filtered.map((d) => {
     const extra = state.deputyDetails.get(d.id) || {};
     return `<article class="mini-card deputy-card">
-      <img src="${d.urlFoto || ''}" alt="${d.nome || 'Deputado'}" onerror="this.style.display='none'" />
+      <img src="${escapeHtml(d.urlFoto || '')}" alt="${escapeHtml(d.nome || 'Deputado')}" onerror="this.style.display='none'" />
       <div>
-        <h3>${d.nome || 'Deputado(a)'}</h3>
-        <p>${d.siglaPartido || 'N/I'} · ${d.siglaUf || 'N/I'}</p>
-        <p><strong>Legislaturas:</strong> ${extra.legislaturas ?? 0}</p>
-        <p><strong>E-mail:</strong> ${extra.email || 'Não informado'}</p>
-        <p><strong>Ramal/Telefone:</strong> ${extra.telefone || 'Não informado'}</p>
-        <p><strong>Gabinete:</strong> ${extra.sala || 'Não informado'}</p>
+        <h3>${escapeHtml(d.nome || 'Deputado(a)')}</h3>
+        <p>${escapeHtml(d.siglaPartido || 'N/I')} · ${escapeHtml(d.siglaUf || 'N/I')}</p>
+        <p><strong>Legislaturas:</strong> ${escapeHtml(extra.legislaturas ?? 0)}</p>
+        <p><strong>E-mail:</strong> ${escapeHtml(extra.email || 'Não informado')}</p>
+        <p><strong>Ramal/Telefone:</strong> ${escapeHtml(extra.telefone || 'Não informado')}</p>
+        <p><strong>Gabinete:</strong> ${escapeHtml(extra.sala || 'Não informado')}</p>
       </div>
     </article>`;
   }).join('');
@@ -216,15 +225,15 @@ function renderLegislative() {
   elements.proposalList.innerHTML = proposals.map((p) => {
     const code = `${p.siglaTipo} ${p.numero}/${p.ano}`;
     const tracked = state.tracked.find((t) => t.id === p.id);
-    return `<div class="list-item"><div><strong>${code}</strong><p>${(p.ementa || '').slice(0, 100)}</p></div><button data-action="track" data-id="${p.id}">${tracked ? 'Acompanhando' : 'Acompanhar'}</button></div>`;
+    return `<div class="list-item"><div><strong>${escapeHtml(code)}</strong><p>${escapeHtml((p.ementa || '').slice(0, 100))}</p></div><button data-action="track" data-id="${escapeHtml(p.id)}">${tracked ? 'Acompanhando' : 'Acompanhar'}</button></div>`;
   }).join('');
 
   elements.trackedList.innerHTML = state.tracked.length
-    ? state.tracked.map((t) => `<div class="list-item"><div><strong>${t.code}</strong><p>${t.lastSnapshot || 'Sem atualização'}</p></div><button data-action="untrack" data-id="${t.id}">Remover</button></div>`).join('')
+    ? state.tracked.map((t) => `<div class="list-item"><div><strong>${escapeHtml(t.code)}</strong><p>${escapeHtml(t.lastSnapshot || 'Sem atualização')}</p></div><button data-action="untrack" data-id="${escapeHtml(t.id)}">Remover</button></div>`).join('')
     : '<p>Nenhuma proposta monitorada ainda.</p>';
 
   elements.changesList.innerHTML = state.changes.length
-    ? state.changes.slice(0, 10).map((c) => `<div class="list-item"><div><strong>${c.code}</strong><p>${c.message}</p></div><span>${df.format(new Date(c.when))}</span></div>`).join('')
+    ? state.changes.slice(0, 10).map((c) => `<div class="list-item"><div><strong>${escapeHtml(c.code)}</strong><p>${escapeHtml(c.message)}</p></div><span>${escapeHtml(df.format(new Date(c.when)))}</span></div>`).join('')
     : '<p>Sem mudanças detectadas.</p>';
 }
 
@@ -310,7 +319,7 @@ async function loadDashboard() {
   }
 
   const parties = [...new Set(state.deputados.map((d) => d.siglaPartido).filter(Boolean))].sort();
-  elements.deputyPartyFilter.innerHTML = '<option value="">Todos os partidos</option>' + parties.map((p) => `<option value="${p}">${p}</option>`).join('');
+  elements.deputyPartyFilter.innerHTML = '<option value="">Todos os partidos</option>' + parties.map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
 
   await checkTrackedUpdates();
   renderAll();
