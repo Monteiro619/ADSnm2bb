@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Câmara 360 | Gestão Legislativa</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-theme="dark">
+    <div class="layout">
+      <aside class="sidebar">
+        <div>
+          <h1>Câmara 360</h1>
+          <p>Gestão de gabinete</p>
+        </div>
+
+        <nav id="sidebarNav" class="sidebar-nav">
+          <button class="nav-btn active" data-view="dashboard">Visão Geral</button>
+          <button class="nav-btn" data-view="deputados">Deputados</button>
+          <button class="nav-btn" data-view="legislativo">Controle Legislativo</button>
+          <button class="nav-btn" data-view="agenda">Agenda</button>
+          <a class="nav-btn nav-link" href="live.html">Ao Vivo</a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="themeToggle" type="button">Alternar tema</button>
+          <p id="apiStatus">API: aguardando...</p>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="top-header">
+          <div>
+            <h2 id="viewTitle">Visão Geral</h2>
+            <p>Última atualização: <span id="lastUpdate">--</span></p>
+          </div>
+          <div class="header-actions">
+            <select id="refreshInterval">
+              <option value="0">Manual</option>
+              <option value="60" selected>A cada 1 min</option>
+              <option value="300">A cada 5 min</option>
+            </select>
+            <button id="manualRefresh" type="button">Atualizar</button>
+          </div>
+        </header>
+
+        <section id="view-dashboard" class="view active">
+          <div id="kpis" class="kpis"></div>
+          <div class="grid-2">
+            <article class="panel">
+              <h3>Bancadas (Top 10)</h3>
+              <div id="partyChart" class="bars"></div>
+            </article>
+            <article class="panel">
+              <h3>Comissões em alta</h3>
+              <div id="committeesHot" class="list"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-deputados" class="view">
+          <div class="panel">
+            <div class="filters">
+              <input id="deputySearch" type="search" placeholder="Buscar por nome, partido ou UF" />
+              <select id="deputyPartyFilter"><option value="">Todos os partidos</option></select>
+            </div>
+            <div id="deputiesGrid" class="cards-grid"></div>
+          </div>
+        </section>
+
+        <section id="view-legislativo" class="view">
+          <div class="grid-2">
+            <article class="panel">
+              <h3>Propostas para acompanhar</h3>
+              <div id="proposalList" class="list"></div>
+            </article>
+            <article class="panel">
+              <h3>Monitoradas pelo gabinete</h3>
+              <div id="trackedList" class="list"></div>
+            </article>
+          </div>
+          <article class="panel">
+            <h3>Últimas mudanças detectadas</h3>
+            <div id="changesList" class="list"></div>
+          </article>
+        </section>
+
+        <section id="view-agenda" class="view">
+          <article class="panel">
+            <div class="filters">
+              <select id="eventTypeFilter">
+                <option value="todos">Todos os tipos</option>
+                <option value="comissao">Comissões</option>
+                <option value="plenario">Plenário</option>
+              </select>
+              <input id="eventSearch" type="search" placeholder="Buscar tema / órgão" />
+            </div>
+            <div id="eventsTable"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <template id="eventRowTemplate">
+      <tr>
+        <td data-col="inicio"></td>
+        <td data-col="tipo"></td>
+        <td data-col="orgao"></td>
+        <td data-col="descricao"></td>
+        <td data-col="situacao"></td>
+      </tr>
+    </template>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
