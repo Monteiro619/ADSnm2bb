@@ -1,0 +1,9 @@
+{
+  "name": "painel-camara-360",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dashboard estático da Câmara com servidor de preview",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
