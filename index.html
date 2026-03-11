@@ -1,116 +1,381 @@
-<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Câmara 360 | Gestão Legislativa</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body data-theme="dark">
-    <div class="layout">
-      <aside class="sidebar">
-        <div>
-          <h1>Câmara 360</h1>
-          <p>Gestão de gabinete</p>
-        </div>
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Câmara 360 | Gestão Legislativa</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          boxShadow: {
+            soft: '0 8px 30px rgba(0,0,0,0.08)'
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+  <div class="min-h-full flex">
+    <aside class="w-72 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hidden md:flex md:flex-col">
+      <h1 class="text-xl font-bold">Câmara 360</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Painel Legislativo</p>
 
-        <nav id="sidebarNav" class="sidebar-nav">
-          <button class="nav-btn active" data-view="dashboard">Visão Geral</button>
-          <button class="nav-btn" data-view="deputados">Deputados</button>
-          <button class="nav-btn" data-view="legislativo">Controle Legislativo</button>
-          <button class="nav-btn" data-view="agenda">Agenda</button>
-          <a class="nav-btn nav-link" href="live.html">Ao Vivo</a>
-        </nav>
+      <nav class="mt-6 space-y-2" aria-label="Navegação principal">
+        <button data-view="dashboard" class="nav-btn w-full text-left px-3 py-2 rounded-lg bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-white" aria-current="page">Visão Geral</button>
+        <button data-view="deputados" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">Deputados</button>
+        <button data-view="agenda" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">Agenda</button>
+      </nav>
 
-        <div class="sidebar-footer">
-          <button id="themeToggle" type="button">Alternar tema</button>
-          <p id="apiStatus">API: aguardando...</p>
-        </div>
-      </aside>
+      <div class="mt-auto pt-4 border-t border-slate-200 dark:border-slate-800">
+        <button id="themeToggle" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-sm" aria-label="Alternar tema claro e escuro">Alternar tema</button>
+        <p id="apiStatus" class="mt-3 text-xs text-slate-500 dark:text-slate-400">API: aguardando...</p>
+      </div>
+    </aside>
 
-      <main class="content">
-        <header class="top-header">
+    <main class="flex-1 p-4 md:p-6 overflow-y-auto">
+      <header class="sticky top-0 z-20 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 mb-5 pb-3">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <h2 id="viewTitle">Visão Geral</h2>
-            <p>Última atualização: <span id="lastUpdate">--</span></p>
+            <h2 id="viewTitle" class="text-2xl font-bold">Visão Geral</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Última atualização: <span id="lastUpdate">--</span></p>
           </div>
-          <div class="header-actions">
-            <select id="refreshInterval">
-              <option value="0">Manual</option>
+          <div class="flex items-center gap-2">
+            <select id="refreshInterval" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900">
+              <option value="0">Atualização manual</option>
               <option value="60" selected>A cada 1 min</option>
               <option value="300">A cada 5 min</option>
             </select>
-            <button id="manualRefresh" type="button">Atualizar</button>
+            <button id="manualRefresh" class="px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold">Atualizar</button>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <section id="view-dashboard" class="view active">
-          <div id="kpis" class="kpis"></div>
-          <div class="grid-2">
-            <article class="panel">
-              <h3>Bancadas (Top 10)</h3>
-              <div id="partyChart" class="bars"></div>
-            </article>
-            <article class="panel">
-              <h3>Comissões em alta</h3>
-              <div id="committeesHot" class="list"></div>
-            </article>
-          </div>
-        </section>
+      <section id="view-dashboard" class="view space-y-5">
+        <div id="kpis" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"></div>
 
-        <section id="view-deputados" class="view">
-          <div class="panel">
-            <div class="filters">
-              <input id="deputySearch" type="search" placeholder="Buscar por nome, partido ou UF" />
-              <select id="deputyPartyFilter"><option value="">Todos os partidos</option></select>
-            </div>
-            <div id="deputiesGrid" class="cards-grid"></div>
-          </div>
-        </section>
-
-        <section id="view-legislativo" class="view">
-          <div class="grid-2">
-            <article class="panel">
-              <h3>Propostas para acompanhar</h3>
-              <div id="proposalList" class="list"></div>
-            </article>
-            <article class="panel">
-              <h3>Monitoradas pelo gabinete</h3>
-              <div id="trackedList" class="list"></div>
-            </article>
-          </div>
-          <article class="panel">
-            <h3>Últimas mudanças detectadas</h3>
-            <div id="changesList" class="list"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <article class="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-soft">
+            <h3 class="font-bold mb-4">Bancadas partidárias (Top 10)</h3>
+            <div id="partyBars" class="space-y-3"></div>
           </article>
-        </section>
-
-        <section id="view-agenda" class="view">
-          <article class="panel">
-            <div class="filters">
-              <select id="eventTypeFilter">
-                <option value="todos">Todos os tipos</option>
-                <option value="comissao">Comissões</option>
-                <option value="plenario">Plenário</option>
-              </select>
-              <input id="eventSearch" type="search" placeholder="Buscar tema / órgão" />
-            </div>
-            <div id="eventsTable"></div>
+          <article class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-soft">
+            <h3 class="font-bold mb-4">Comissões em alta</h3>
+            <div id="hotCommittees" class="space-y-2"></div>
           </article>
-        </section>
-      </main>
+        </div>
+      </section>
+
+      <section id="view-deputados" class="view hidden space-y-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-wrap gap-3">
+          <input id="deputySearch" type="search" class="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" placeholder="Buscar deputado por nome, partido ou UF" aria-label="Buscar deputado" />
+          <select id="deputyPartyFilter" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" aria-label="Filtrar deputado por partido">
+            <option value="">Todos os partidos</option>
+          </select>
+        </div>
+        <div id="deputiesGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+      </section>
+
+      <section id="view-agenda" class="view hidden space-y-4">
+        <article class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-soft">
+          <div class="flex flex-wrap gap-3 mb-3">
+            <select id="eventTypeFilter" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" aria-label="Filtrar agenda por tipo">
+              <option value="todos">Todos os tipos</option>
+              <option value="comissao">Comissões</option>
+              <option value="plenario">Plenário</option>
+            </select>
+            <input id="eventDateFilter" type="date" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" aria-label="Filtrar agenda por data específica" />
+            <input id="eventSearch" type="search" class="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" placeholder="Buscar tema ou órgão" aria-label="Buscar na agenda" />
+          </div>
+          <div id="eventsTable"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div id="deputyModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="deputyModalTitle" aria-describedby="deputyModalDesc">
+    <div class="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-soft">
+      <div class="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
+        <h3 id="deputyModalTitle" class="text-lg font-bold">Detalhes do Deputado</h3>
+        <button id="closeModal" class="px-3 py-1 rounded border border-slate-300 dark:border-slate-700" aria-label="Fechar modal">Fechar</button>
+      </div>
+      <div id="deputyModalDesc" class="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+        <p class="text-sm text-slate-500 dark:text-slate-400">Carregando detalhes...</p>
+      </div>
     </div>
+  </div>
 
-    <template id="eventRowTemplate">
-      <tr>
-        <td data-col="inicio"></td>
-        <td data-col="tipo"></td>
-        <td data-col="orgao"></td>
-        <td data-col="descricao"></td>
-        <td data-col="situacao"></td>
-      </tr>
-    </template>
+  <script>
+    const API_BASE = 'https://dadosabertos.camara.leg.br/api/v2';
+    const state = { view: 'dashboard', deputados: [], orgaos: [], proposicoes: [], eventos: [], timerId: null, lastFocused: null };
 
-    <script src="app.js" defer></script>
-  </body>
+    const els = {
+      viewTitle: document.getElementById('viewTitle'),
+      lastUpdate: document.getElementById('lastUpdate'),
+      apiStatus: document.getElementById('apiStatus'),
+      themeToggle: document.getElementById('themeToggle'),
+      refreshInterval: document.getElementById('refreshInterval'),
+      manualRefresh: document.getElementById('manualRefresh'),
+      kpis: document.getElementById('kpis'),
+      partyBars: document.getElementById('partyBars'),
+      hotCommittees: document.getElementById('hotCommittees'),
+      deputySearch: document.getElementById('deputySearch'),
+      deputyPartyFilter: document.getElementById('deputyPartyFilter'),
+      deputiesGrid: document.getElementById('deputiesGrid'),
+      eventTypeFilter: document.getElementById('eventTypeFilter'),
+      eventDateFilter: document.getElementById('eventDateFilter'),
+      eventSearch: document.getElementById('eventSearch'),
+      eventsTable: document.getElementById('eventsTable'),
+      deputyModal: document.getElementById('deputyModal'),
+      deputyModalDesc: document.getElementById('deputyModalDesc'),
+      closeModal: document.getElementById('closeModal'),
+    };
+
+    const df = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    const nf = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    function initTheme() {
+      const stored = localStorage.getItem('camara360-theme');
+      const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const dark = stored ? stored === 'dark' : preferDark;
+      document.documentElement.classList.toggle('dark', dark);
+    }
+
+    function toggleTheme() {
+      const dark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('camara360-theme', dark ? 'dark' : 'light');
+    }
+
+    function normalizeType(e) {
+      const t = `${e.descricaoTipo || ''} ${e.descricao || ''}`.toLowerCase();
+      return t.includes('plen') || t.includes('sessão') ? 'plenario' : 'comissao';
+    }
+
+    async function fetchApi(path, params = {}) {
+      const query = new URLSearchParams(params);
+      const res = await fetch(`${API_BASE}${path}?${query.toString()}`);
+      if (!res.ok) throw new Error(`Erro HTTP ${res.status}`);
+      return res.json();
+    }
+
+    function switchView(view) {
+      state.view = view;
+      document.querySelectorAll('.view').forEach(v => v.classList.toggle('hidden', v.id !== `view-${view}`));
+      document.querySelectorAll('.nav-btn[data-view]').forEach(b => {
+        const active = b.dataset.view === view;
+        b.classList.toggle('bg-blue-50', active);
+        b.classList.toggle('text-blue-700', active);
+        b.classList.toggle('dark:bg-slate-800', active);
+        b.classList.toggle('dark:text-white', active);
+        b.setAttribute('aria-current', active ? 'page' : 'false');
+      });
+      const title = { dashboard: 'Visão Geral', deputados: 'Deputados', agenda: 'Agenda' }[view];
+      els.viewTitle.textContent = title;
+    }
+
+    function renderDashboard() {
+      const partiesCount = new Set(state.deputados.map(d => d.siglaPartido)).size;
+      const events48h = state.eventos.filter(e => new Date(e.dataHoraInicio).getTime() < Date.now() + 48*3600*1000).length;
+      const kpis = [
+        ['Deputados ativos', state.deputados.length],
+        ['Partidos', partiesCount],
+        ['Comissões', state.orgaos.length],
+        ['Eventos 48h', events48h],
+      ];
+      els.kpis.innerHTML = kpis.map(([k,v]) => `<article class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4"><p class="text-sm text-slate-500 dark:text-slate-400">${k}</p><h3 class="text-2xl font-bold mt-1">${v}</h3></article>`).join('');
+
+      const partyMap = state.deputados.reduce((a,d)=>{a[d.siglaPartido||'N/I']=(a[d.siglaPartido||'N/I']||0)+1;return a;},{});
+      const top = Object.entries(partyMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+      const max = top[0]?.[1] || 1;
+      els.partyBars.innerHTML = top.map(([p,v]) => `<div class="grid grid-cols-[90px_1fr_40px] items-center gap-2"><strong>${p}</strong><div class="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden"><div class="h-full bg-blue-700" style="width:${(v/max)*100}%"></div></div><span>${v}</span></div>`).join('');
+
+      const comms = state.eventos.reduce((a,e)=>{const k=e.orgao?.apelido||'Órgão';a[k]=(a[k]||0)+1;return a;},{});
+      const topComms = Object.entries(comms).sort((a,b)=>b[1]-a[1]).slice(0,7);
+      els.hotCommittees.innerHTML = topComms.map(([n,c]) => `<div class="flex justify-between p-2 rounded border border-slate-200 dark:border-slate-800"><span>${n}</span><span class="text-xs">${c} eventos</span></div>`).join('') || '<p class="text-sm text-slate-500">Sem dados.</p>';
+    }
+
+    function renderDeputies() {
+      const search = els.deputySearch.value.toLowerCase();
+      const party = els.deputyPartyFilter.value;
+      const filtered = state.deputados.filter(d => {
+        const txt = `${d.nome||''} ${d.siglaPartido||''} ${d.siglaUf||''}`.toLowerCase();
+        return txt.includes(search) && (!party || d.siglaPartido === party);
+      }).slice(0,40);
+
+      els.deputiesGrid.innerHTML = filtered.map(d => `
+        <button class="deputy-card text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-soft focus:outline-none focus:ring-2 focus:ring-blue-600" data-deputy-id="${d.id}" aria-label="Abrir detalhes de ${d.nome}">
+          <div class="flex items-center gap-3">
+            <img src="${d.urlFoto || ''}" alt="Foto de ${d.nome}" class="w-14 h-14 rounded-full object-cover border border-slate-300 dark:border-slate-700" />
+            <div>
+              <h4 class="font-bold text-sm">${d.nome}</h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400">${d.siglaPartido || 'N/I'} · ${d.siglaUf || 'N/I'}</p>
+            </div>
+          </div>
+          <p class="mt-2 text-xs text-blue-700 dark:text-blue-400">Clique para ver gastos e presenças</p>
+        </button>
+      `).join('');
+    }
+
+    function renderAgenda() {
+      const type = els.eventTypeFilter.value;
+      const search = els.eventSearch.value.toLowerCase();
+      const date = els.eventDateFilter.value;
+
+      const rows = state.eventos.filter(e => {
+        if (type !== 'todos' && normalizeType(e) !== type) return false;
+        if (date) {
+          const eventDate = new Date(e.dataHoraInicio).toISOString().slice(0,10);
+          if (eventDate !== date) return false;
+        }
+        const txt = `${e.descricaoTipo||''} ${e.descricao||''} ${e.orgao?.apelido||''} ${e.orgao?.nome||''}`.toLowerCase();
+        return txt.includes(search);
+      }).sort((a,b)=>new Date(a.dataHoraInicio)-new Date(b.dataHoraInicio)).slice(0,40);
+
+      if (!rows.length) {
+        els.eventsTable.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">Nenhum evento encontrado para os filtros.</p>';
+        return;
+      }
+
+      els.eventsTable.innerHTML = `
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left border-b border-slate-200 dark:border-slate-800"><th class="py-2">Início</th><th>Tipo</th><th>Órgão</th><th>Descrição</th><th>Situação</th></tr></thead>
+            <tbody>
+              ${rows.map(e => `<tr class="border-b border-slate-100 dark:border-slate-900"><td class="py-2">${df.format(new Date(e.dataHoraInicio))}</td><td>${e.descricaoTipo || '-'}</td><td>${e.orgao?.apelido || e.orgao?.nome || '-'}</td><td>${e.descricao || '-'}</td><td>${e.situacao || '-'}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    async function openDeputyModal(depId, trigger) {
+      state.lastFocused = trigger;
+      els.deputyModal.classList.remove('hidden');
+      els.deputyModal.classList.add('flex');
+      els.closeModal.focus();
+      els.deputyModalDesc.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">Carregando gastos e presenças...</p>';
+
+      try {
+        const [dadosDep, despesasResp, presencasResp] = await Promise.all([
+          fetchApi(`/deputados/${depId}`),
+          fetchApi(`/deputados/${depId}/despesas`, { itens: 10, ordem: 'DESC', ordenarPor: 'dataDocumento' }),
+          fetchApi(`/deputados/${depId}/presencas`, { itens: 20, ordem: 'DESC', ordenarPor: 'data' }).catch(() => ({ dados: [] })),
+        ]);
+
+        const dep = dadosDep?.dados || {};
+        const ultimo = dep.ultimoStatus || {};
+        const despesas = despesasResp?.dados || [];
+        const presencas = presencasResp?.dados || [];
+
+        const totalDespesas = despesas.reduce((acc, d) => acc + Number(d.valorDocumento || 0), 0);
+
+        els.deputyModalDesc.innerHTML = `
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <h4 class="font-bold text-base">${dep.nomeCivil || ultimo.nome || 'Deputado(a)'}</h4>
+              <p class="text-sm text-slate-500 dark:text-slate-400">${ultimo.siglaPartido || ''} · ${ultimo.siglaUf || ''}</p>
+              <p class="text-sm mt-2"><strong>Email:</strong> ${ultimo.email || 'Não informado'}</p>
+              <p class="text-sm"><strong>Telefone:</strong> ${ultimo.gabinete?.telefone || 'Não informado'}</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+              <p class="text-sm text-slate-500 dark:text-slate-400">Total dos últimos documentos</p>
+              <p class="text-xl font-bold">${nf.format(totalDespesas)}</p>
+            </div>
+          </div>
+
+          <div>
+            <h5 class="font-semibold mb-2">Últimas despesas (cota parlamentar)</h5>
+            <div class="space-y-2 text-sm">
+              ${despesas.length ? despesas.map(d => `<div class="p-2 border rounded border-slate-200 dark:border-slate-800"><strong>${d.tipoDespesa || 'Despesa'}</strong><br/>${d.nomeFornecedor || 'Fornecedor'} · ${nf.format(Number(d.valorDocumento || 0))}<br/><span class="text-xs text-slate-500">${d.dataDocumento || ''}</span></div>`).join('') : '<p class="text-slate-500">Sem despesas disponíveis.</p>'}
+            </div>
+          </div>
+
+          <div>
+            <h5 class="font-semibold mb-2">Presenças recentes</h5>
+            <div class="space-y-2 text-sm">
+              ${presencas.length ? presencas.slice(0,10).map(p => `<div class="p-2 border rounded border-slate-200 dark:border-slate-800"><strong>${p.data || ''}</strong> · ${p.descricaoFrequenciaDia || p.justificativa || 'Sem detalhe'}</div>`).join('') : '<p class="text-slate-500">Sem presenças disponíveis na rota consultada.</p>'}
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        els.deputyModalDesc.innerHTML = `<p class="text-sm text-red-600">Não foi possível carregar detalhes do deputado: ${err.message}</p>`;
+      }
+    }
+
+    function closeDeputyModal() {
+      els.deputyModal.classList.add('hidden');
+      els.deputyModal.classList.remove('flex');
+      if (state.lastFocused) state.lastFocused.focus();
+    }
+
+    async function loadData() {
+      els.apiStatus.textContent = 'API: carregando...';
+      try {
+        const [deps, orgs, props, events] = await Promise.all([
+          fetchApi('/deputados', { itens: 600, ordem: 'ASC', ordenarPor: 'nome' }),
+          fetchApi('/orgaos', { itens: 200, ordem: 'ASC', ordenarPor: 'apelido' }),
+          fetchApi('/proposicoes', { siglaTipo: 'PL', itens: 30, ordem: 'DESC', ordenarPor: 'id' }),
+          fetchApi('/eventos', {
+            dataInicio: new Date(Date.now() - 24*3600*1000).toISOString().slice(0,10),
+            dataFim: new Date(Date.now() + 7*24*3600*1000).toISOString().slice(0,10),
+            itens: 100,
+            ordem: 'ASC',
+            ordenarPor: 'dataHoraInicio'
+          })
+        ]);
+
+        state.deputados = deps.dados || [];
+        state.orgaos = orgs.dados || [];
+        state.proposicoes = props.dados || [];
+        state.eventos = events.dados || [];
+        els.apiStatus.textContent = 'API: conectado';
+      } catch (err) {
+        els.apiStatus.textContent = `API: fallback (${err.message})`;
+        state.deputados = [
+          { id: 1, nome: 'Dep. Exemplo', siglaPartido: 'PL', siglaUf: 'AP', urlFoto: 'https://www.camara.leg.br/internet/deputado/bandep/160565.jpg' }
+        ];
+        state.orgaos = [{ apelido: 'CCJC' }];
+        state.proposicoes = [];
+        state.eventos = [{ dataHoraInicio: new Date().toISOString(), descricaoTipo: 'Sessão', orgao: { apelido: 'PLEN' }, descricao: 'Evento de demonstração', situacao: 'Previsto' }];
+      }
+
+      const parties = [...new Set(state.deputados.map(d => d.siglaPartido).filter(Boolean))].sort();
+      els.deputyPartyFilter.innerHTML = '<option value="">Todos os partidos</option>' + parties.map(p => `<option value="${p}">${p}</option>`).join('');
+
+      renderDashboard();
+      renderDeputies();
+      renderAgenda();
+      els.lastUpdate.textContent = new Date().toLocaleTimeString('pt-BR');
+    }
+
+    function setAutoRefresh(seconds) {
+      if (state.timerId) clearInterval(state.timerId);
+      state.timerId = seconds > 0 ? setInterval(loadData, seconds * 1000) : null;
+    }
+
+    document.querySelectorAll('.nav-btn[data-view]').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+    els.themeToggle.addEventListener('click', toggleTheme);
+    els.manualRefresh.addEventListener('click', loadData);
+    els.refreshInterval.addEventListener('change', e => setAutoRefresh(Number(e.target.value)));
+    els.deputySearch.addEventListener('input', renderDeputies);
+    els.deputyPartyFilter.addEventListener('change', renderDeputies);
+    els.eventTypeFilter.addEventListener('change', renderAgenda);
+    els.eventDateFilter.addEventListener('change', renderAgenda);
+    els.eventSearch.addEventListener('input', renderAgenda);
+    els.closeModal.addEventListener('click', closeDeputyModal);
+    els.deputyModal.addEventListener('click', (e) => { if (e.target === els.deputyModal) closeDeputyModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !els.deputyModal.classList.contains('hidden')) closeDeputyModal(); });
+    document.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-deputy-id]');
+      if (card) openDeputyModal(Number(card.dataset.deputyId), card);
+    });
+
+    initTheme();
+    loadData();
+    setAutoRefresh(Number(els.refreshInterval.value));
+  </script>
+</body>
 </html>
