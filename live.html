@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel Câmara 360 · Ao Vivo</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="index.html">Câmara 360</a>
+      <nav class="topnav" aria-label="Navegação principal">
+        <a href="index.html">Painel</a>
+        <a href="index.html#comissoes">Comissões</a>
+        <a href="index.html#agenda">Agenda</a>
+        <a href="live.html">Ao vivo</a>
+      </nav>
+    </header>
+
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Monitoramento em tempo real</p>
+        <h1>Comissões e Plenário ao Vivo</h1>
+        <p>
+          Acompanhe sessões em andamento e próximos eventos para operação de gabinete.
+        </p>
+      </div>
+      <div class="actions">
+        <a class="nav-btn" href="index.html">← Voltar ao painel</a>
+        <button id="liveRefresh" type="button">Atualizar agora</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Agora</h2>
+          <p>Eventos que podem estar em transmissão neste momento.</p>
+        </div>
+        <div id="liveStatus" class="status"></div>
+        <div id="liveNow" class="cards-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Próximos (24h)</h2>
+          <p>Programação de comissões e plenário para antecipação tática.</p>
+        </div>
+        <div id="liveNext" class="cards-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Canais recomendados</h2>
+          <p>Atalhos oficiais de transmissão e acompanhamento.</p>
+        </div>
+        <ul class="rank-list">
+          <li><a href="https://www.youtube.com/@camaradosdeputadosoficial" target="_blank">YouTube oficial da Câmara</a></li>
+          <li><a href="https://www.camara.leg.br/eventos-divulgacao/eventoLista" target="_blank">Agenda oficial de eventos</a></li>
+          <li><a href="https://www.camara.leg.br/tv" target="_blank">TV Câmara</a></li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <p>Última atualização: <strong id="liveLastUpdate">--</strong></p>
+    </footer>
+
+    <script src="live.js" defer></script>
+  </body>
+</html>

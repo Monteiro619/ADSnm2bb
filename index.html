@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Câmara 360 | Dashboard Legislativo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root { color-scheme: light; }
+    .tab-view { display: none; }
+    .tab-view.active { display: block; }
+    .nav-active { background:#1d4ed8; color:#fff; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <div id="announcer" class="sr-only" aria-live="polite"></div>
+  <div class="min-h-screen flex">
+    <aside class="w-72 bg-white border-r border-slate-200 p-5 sticky top-0 h-screen hidden md:block">
+      <div class="flex items-center gap-3 mb-8">
+        <div class="p-2 rounded-lg bg-blue-700 text-white"><i data-lucide="building-2" class="w-5 h-5"></i></div>
+        <div>
+          <h1 class="font-bold text-lg">Câmara 360</h1>
+          <p class="text-xs text-slate-500">Alta performance legislativa</p>
+        </div>
+      </div>
+      <nav id="sidebar-nav" class="space-y-2">
+        <button data-tab="overview" class="tab-btn nav-active w-full text-left px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"><i data-lucide="layout-dashboard" class="w-4 h-4"></i>Visão Geral</button>
+        <button data-tab="gabinete" class="tab-btn w-full text-left px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"><i data-lucide="notebook-pen" class="w-4 h-4"></i>Gabinete IA</button>
+        <button data-tab="monitor" class="tab-btn w-full text-left px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"><i data-lucide="radar" class="w-4 h-4"></i>Monitor</button>
+        <button data-tab="deputies" class="tab-btn w-full text-left px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i>Deputados</button>
+        <button data-tab="projects" class="tab-btn w-full text-left px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4"></i>Projetos</button>
+        <button data-tab="agenda" class="tab-btn w-full text-left px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4"></i>Agenda</button>
+      </nav>
+      <div class="mt-8 p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+        <p class="font-semibold">Status API</p>
+        <p id="api-status" class="text-slate-600 mt-1">Inicializando...</p>
+      </div>
+    </aside>
+
+    <main class="flex-1 p-4 md:p-6 overflow-auto">
+      <header class="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div>
+          <h2 id="view-title" class="font-bold text-lg">Visão Geral</h2>
+          <p class="text-xs text-slate-500">Atualizado em <span id="last-update">--:--</span></p>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="refresh-interval" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50">
+            <option value="0">Manual</option>
+            <option value="60" selected>1 min</option>
+            <option value="300">5 min</option>
+          </select>
+          <button id="refresh-btn" class="px-3 py-2 rounded-lg bg-blue-700 text-white text-sm font-semibold flex items-center gap-2"><i data-lucide="refresh-cw" class="w-4 h-4"></i>Atualizar</button>
+        </div>
+      </header>
+
+      <section id="tab-overview" class="tab-view active space-y-4">
+        <div id="kpi-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <h3 class="font-semibold mb-3">Validação de Endpoints</h3>
+            <div id="api-checks" class="space-y-2 text-sm"></div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <h3 class="font-semibold mb-3">Integrações</h3>
+            <div class="grid gap-2 text-sm">
+              <a target="_blank" href="https://dadosabertos.camara.leg.br/swagger/api.html" class="p-2 border rounded-lg hover:border-blue-500">Swagger Câmara</a>
+              <a target="_blank" href="https://www.camara.leg.br/" class="p-2 border rounded-lg hover:border-blue-500">Portal Câmara</a>
+              <a target="_blank" href="https://www12.senado.leg.br/infoleg/" class="p-2 border rounded-lg hover:border-blue-500">Infoleg</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-gabinete" class="tab-view space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <h3 class="font-semibold mb-2">Notebook Legislativo</h3>
+            <textarea id="notebook" class="w-full h-80 border border-slate-200 rounded-lg p-3 text-sm" placeholder="Estruture pareceres, notas técnicas e minutas de emenda..."></textarea>
+            <button id="save-note" class="mt-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-sm">Salvar rascunho</button>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4 flex flex-col">
+            <h3 class="font-semibold mb-2">Assistente IA (simulado)</h3>
+            <div id="chat-log" class="flex-1 border border-slate-200 rounded-lg p-3 space-y-2 overflow-auto bg-slate-50"></div>
+            <div class="mt-2 flex gap-2">
+              <input id="chat-input" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Ex: Resuma os impactos do PL 123/2024" />
+              <button id="chat-send" class="px-3 py-2 rounded-lg bg-blue-700 text-white text-sm">Enviar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-monitor" class="tab-view space-y-4">
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <h3 class="font-semibold mb-2">Monitor de Operação</h3>
+          <div id="monitor-log" class="space-y-2 text-sm"></div>
+        </div>
+      </section>
+
+      <section id="tab-deputies" class="tab-view space-y-4">
+        <div class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+          <input id="deputy-search" class="border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Buscar nome" />
+          <select id="deputy-party" class="border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">Partido</option></select>
+          <select id="deputy-uf" class="border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">UF</option></select>
+          <select id="deputy-sex" class="border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">Sexo</option><option value="M">Masculino</option><option value="F">Feminino</option></select>
+        </div>
+        <div id="deputies-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+      </section>
+
+      <section id="tab-projects" class="tab-view space-y-4">
+        <div id="radar-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <h3 class="font-semibold mb-2">Projetos recentes</h3>
+          <div id="projects-list" class="space-y-2"></div>
+        </div>
+      </section>
+
+      <section id="tab-agenda" class="tab-view space-y-4">
+        <div id="agenda-list" class="space-y-2"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = 'https://dadosabertos.camara.leg.br/api/v2';
+    const STORAGE_TRACK = 'camara360_radar_v2';
+    const STORAGE_NOTE = 'camara360_note_v1';
+
+    const state = {
+      data: { deputados: [], orgaos: [], proposicoes: [], eventos: [] },
+      mockMode: false,
+      tracked: [],
+      tab: 'overview',
+      timer: null,
+    };
+
+    const mockData = {
+      deputados: [{ id: 1, nome: 'Dep. Demonstração', siglaPartido: 'PL', siglaUf: 'AP', siglaSexo: 'M', urlFoto: '' }],
+      orgaos: [{ id: 1, apelido: 'CCJC', nome: 'Comissão de Constituição e Justiça', tipoOrgao: 'Comissão Permanente' }],
+      proposicoes: [{ id: 999, siglaTipo: 'PL', numero: 1234, ano: 2024, ementa: 'Projeto em modo demonstração.' }],
+      eventos: [{ dataHoraInicio: new Date().toISOString(), descricaoTipo: 'Sessão', descricao: 'Evento de demonstração', orgao: { apelido: 'PLEN' }, situacao: 'Prevista' }],
+    };
+
+    function announce(msg){ document.getElementById('announcer').textContent = msg; }
+    function esc(v){ return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+    function nf(v){ return new Intl.NumberFormat('pt-BR').format(v); }
+
+    async function fetchApi(path, params = {}, opts = {}) {
+      const retries = opts.retries ?? 3;
+      const delay = opts.delayMs ?? 500;
+      const url = new URL(`${API_BASE}${path}`);
+      Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+
+      let lastError;
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 12000);
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeout);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return await res.json();
+        } catch (err) {
+          lastError = err;
+          const message = String(err?.message || err);
+          const retriable = message.includes('Failed to fetch') || message.includes('NetworkError') || message.includes('CORS') || message.includes('aborted') || message.includes('HTTP 5');
+          if (!retriable || attempt === retries) break;
+          await new Promise(r => setTimeout(r, delay * attempt));
+        }
+      }
+      throw lastError;
+    }
+
+    function setMockMode(on, reason = '') {
+      state.mockMode = on;
+      document.getElementById('api-status').textContent = on ? `Modo Demonstração ativo (${reason || 'falha de API'})` : 'API Câmara online';
+    }
+
+    async function loadData() {
+      try {
+        const [deps, orgs, props, events] = await Promise.all([
+          fetchApi('/deputados', { itens: 200, ordem: 'ASC', ordenarPor: 'nome' }),
+          fetchApi('/orgaos', { itens: 200, ordem: 'ASC', ordenarPor: 'sigla' }),
+          fetchApi('/proposicoes', { itens: 40, ordem: 'DESC', ordenarPor: 'id' }),
+          fetchApi('/eventos', { itens: 40, ordem: 'ASC', ordenarPor: 'dataHoraInicio' }),
+        ]);
+        state.data = {
+          deputados: deps.dados || [],
+          orgaos: orgs.dados || [],
+          proposicoes: props.dados || [],
+          eventos: events.dados || [],
+        };
+        setMockMode(false);
+      } catch (e) {
+        state.data = mockData;
+        setMockMode(true, e.message);
+      }
+      document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR');
+      runApiChecks();
+      renderAll();
+    }
+
+    async function runApiChecks() {
+      const checks = [
+        ['/deputados', {itens: 1}],
+        ['/orgaos', {itens: 1}],
+        ['/proposicoes', {itens: 1}],
+        ['/eventos', {itens: 1}],
+      ];
+      const out = [];
+      for (const [ep, qp] of checks) {
+        try {
+          const res = await fetchApi(ep, qp, { retries: 1 });
+          out.push({ ep, ok: true, info: Array.isArray(res?.dados) ? `${res.dados.length} item(ns)` : 'ok' });
+        } catch (e) {
+          out.push({ ep, ok: false, info: e.message });
+        }
+      }
+      document.getElementById('api-checks').innerHTML = out.map(i => `<div class="flex items-center justify-between p-2 rounded-lg border ${i.ok ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}"><span>${i.ep}</span><span>${i.ok ? 'OK' : 'Falha'} · ${esc(i.info)}</span></div>`).join('');
+    }
+
+    function renderKpis() {
+      const cards = [
+        ['Deputados', state.data.deputados.length, 'users'],
+        ['Comissões', state.data.orgaos.length, 'landmark'],
+        ['Projetos', state.data.proposicoes.length, 'file-text'],
+        ['Eventos', state.data.eventos.length, 'calendar'],
+      ];
+      document.getElementById('kpi-grid').innerHTML = cards.map(([k,v,icon]) => `<div class="bg-white border border-slate-200 rounded-xl p-4"><div class="flex justify-between"><p class="text-xs text-slate-500">${k}</p><i data-lucide="${icon}" class="w-4 h-4 text-slate-400"></i></div><p class="text-2xl font-bold mt-1">${nf(v)}</p></div>`).join('');
+    }
+
+    function normalizeSex(v){
+      const t = String(v || '').toUpperCase();
+      if (t.startsWith('F')) return 'F';
+      if (t.startsWith('M')) return 'M';
+      return '';
+    }
+
+    function renderDeputies() {
+      const q = document.getElementById('deputy-search').value.toLowerCase();
+      const party = document.getElementById('deputy-party').value;
+      const uf = document.getElementById('deputy-uf').value;
+      const sex = document.getElementById('deputy-sex').value;
+      const filtered = state.data.deputados.filter(d => (d.nome||'').toLowerCase().includes(q) && (!party || d.siglaPartido === party) && (!uf || d.siglaUf === uf) && (!sex || normalizeSex(d.siglaSexo) === sex));
+      document.getElementById('deputies-grid').innerHTML = filtered.slice(0, 60).map(d => `<article class="bg-white border border-slate-200 rounded-xl p-3"><div class="flex gap-3"><img src="${esc(d.urlFoto || '')}" class="w-14 h-14 rounded-full object-cover bg-slate-100" /><div><h4 class="font-semibold">${esc(d.nome)}</h4><p class="text-xs text-slate-500">${esc(d.siglaPartido)} · ${esc(d.siglaUf)}</p></div></div></article>`).join('') || '<p class="text-sm text-slate-500">Nenhum parlamentar encontrado.</p>';
+    }
+
+    function renderProjects() {
+      const trackedIds = new Set(state.tracked.map(t => t.id));
+      const radar = state.tracked.map(t => `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3"><p class="text-xs font-bold text-amber-700">RADAR</p><h4 class="font-semibold">${esc(t.code)}</h4><p class="text-xs text-slate-600">${esc(t.ementa || '')}</p><p class="text-xs text-slate-500 mt-1">Alerta: acompanhar próxima tramitação.</p></div>`).join('');
+      document.getElementById('radar-grid').innerHTML = radar || '<p class="text-sm text-slate-500">Nenhum projeto monitorado no radar.</p>';
+
+      document.getElementById('projects-list').innerHTML = state.data.proposicoes.slice(0, 30).map(p => {
+        const code = `${p.siglaTipo || 'MAT'} ${p.numero || '-'} / ${p.ano || '-'}`;
+        return `<div class="flex items-start justify-between border border-slate-200 rounded-lg p-2"><div><p class="font-semibold text-sm">${esc(code)}</p><p class="text-xs text-slate-500">${esc((p.ementa || '').slice(0, 140))}</p></div><button data-action="track" data-id="${p.id}" class="p-1">${trackedIds.has(p.id) ? '⭐' : '☆'}</button></div>`;
+      }).join('');
+    }
+
+    function renderAgenda(){
+      document.getElementById('agenda-list').innerHTML = state.data.eventos.slice(0, 30).map(e => `<div class="bg-white border border-slate-200 rounded-lg p-3"><p class="text-xs text-slate-500">${new Date(e.dataHoraInicio).toLocaleString('pt-BR')}</p><p class="font-semibold text-sm">${esc(e.descricaoTipo || 'Evento')}</p><p class="text-xs text-slate-600">${esc(e.descricao || '')}</p></div>`).join('') || '<p class="text-sm text-slate-500">Sem eventos.</p>';
+    }
+
+    function renderMonitor(){
+      const lines = [
+        `Modo atual: ${state.mockMode ? 'Demonstração' : 'Produção'}`,
+        `Itens no radar: ${state.tracked.length}`,
+        `Último refresh: ${document.getElementById('last-update').textContent}`,
+      ];
+      document.getElementById('monitor-log').innerHTML = lines.map(l => `<div class="p-2 rounded-lg bg-slate-50 border border-slate-200">${esc(l)}</div>`).join('');
+    }
+
+    function renderAll(){
+      const parties = [...new Set(state.data.deputados.map(d => d.siglaPartido).filter(Boolean))].sort();
+      document.getElementById('deputy-party').innerHTML = '<option value="">Partido</option>' + parties.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+      const ufs = [...new Set(state.data.deputados.map(d => d.siglaUf).filter(Boolean))].sort();
+      document.getElementById('deputy-uf').innerHTML = '<option value="">UF</option>' + ufs.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
+
+      renderKpis();
+      renderDeputies();
+      renderProjects();
+      renderAgenda();
+      renderMonitor();
+      lucide.createIcons();
+    }
+
+    function selectTab(tab){
+      state.tab = tab;
+      document.querySelectorAll('.tab-view').forEach(v => v.classList.toggle('active', v.id === `tab-${tab}`));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('nav-active', b.dataset.tab === tab));
+      const names = { overview: 'Visão Geral', gabinete: 'Gabinete IA', monitor: 'Monitor', deputies: 'Deputados', projects: 'Projetos', agenda: 'Agenda' };
+      document.getElementById('view-title').textContent = names[tab] || 'Câmara 360';
+      announce(`Aba ${names[tab]} aberta`);
+    }
+
+    function loadStorage(){
+      try { state.tracked = JSON.parse(localStorage.getItem(STORAGE_TRACK) || '[]'); } catch { state.tracked = []; }
+      document.getElementById('notebook').value = localStorage.getItem(STORAGE_NOTE) || '';
+      document.getElementById('chat-log').innerHTML = '<div class="text-xs text-slate-500">Assistente pronto. Pergunte sobre um projeto de lei.</div>';
+    }
+
+    function saveTracked(){ localStorage.setItem(STORAGE_TRACK, JSON.stringify(state.tracked)); }
+
+    document.getElementById('sidebar-nav').addEventListener('click', (e) => {
+      const btn = e.target.closest('.tab-btn');
+      if (btn) selectTab(btn.dataset.tab);
+    });
+
+    document.body.addEventListener('click', (e) => {
+      const t = e.target.closest('[data-action="track"]');
+      if (!t) return;
+      const id = Number(t.dataset.id);
+      const p = state.data.proposicoes.find(x => x.id === id);
+      if (!p) return;
+      const i = state.tracked.findIndex(x => x.id === id);
+      if (i >= 0) state.tracked.splice(i, 1);
+      else state.tracked.unshift({ id: p.id, code: `${p.siglaTipo} ${p.numero}/${p.ano}`, ementa: p.ementa || '' });
+      saveTracked();
+      renderProjects();
+    });
+
+    document.getElementById('deputy-search').addEventListener('input', renderDeputies);
+    document.getElementById('deputy-party').addEventListener('change', renderDeputies);
+    document.getElementById('deputy-uf').addEventListener('change', renderDeputies);
+    document.getElementById('deputy-sex').addEventListener('change', renderDeputies);
+
+    document.getElementById('save-note').addEventListener('click', () => {
+      localStorage.setItem(STORAGE_NOTE, document.getElementById('notebook').value);
+      announce('Rascunho salvo no navegador.');
+    });
+
+    document.getElementById('chat-send').addEventListener('click', () => {
+      const input = document.getElementById('chat-input');
+      const txt = input.value.trim();
+      if (!txt) return;
+      const log = document.getElementById('chat-log');
+      log.innerHTML += `<div class="text-right"><span class="inline-block bg-blue-700 text-white text-xs px-2 py-1 rounded-lg">${esc(txt)}</span></div>`;
+      const answer = `Análise simulada: priorize impacto fiscal, constitucionalidade e urgência política sobre "${txt}".`;
+      log.innerHTML += `<div><span class="inline-block bg-white border text-xs px-2 py-1 rounded-lg">${esc(answer)}</span></div>`;
+      log.scrollTop = log.scrollHeight;
+      input.value = '';
+    });
+
+    document.getElementById('refresh-btn').addEventListener('click', loadData);
+    document.getElementById('refresh-interval').addEventListener('change', (e) => {
+      const s = Number(e.target.value);
+      if (state.timer) clearInterval(state.timer);
+      state.timer = s > 0 ? setInterval(loadData, s * 1000) : null;
+    });
+
+    window.onload = () => {
+      loadStorage();
+      selectTab('overview');
+      loadData();
+      state.timer = setInterval(loadData, 60000);
+      lucide.createIcons();
+    };
+  </script>
+</body>
+</html>
