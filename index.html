@@ -51,13 +51,7 @@
           <h2 id="view-title" class="font-bold text-xl">Visão Geral</h2>
           <p class="text-xs text-slate-500">Atualização automática ativa · Última sincronização: <span id="last-update">--:--</span></p>
         </div>
-        <div class="flex items-center gap-2">
-          <label class="text-xs text-slate-500">Casa legislativa</label>
-          <select id="house-selector" class="border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 text-sm">
-            <option value="camara" selected>Câmara</option>
-            <option value="senado">Senado</option>
-          </select>
-        </div>
+        <div class="text-xs text-slate-500">Dados oficiais da Câmara dos Deputados</div>
       </header>
 
       <section id="view-overview" class="view active space-y-4">
@@ -167,7 +161,7 @@
           <div id="api-checks" class="space-y-2 text-sm"></div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 text-sm">
             <a target="_blank" href="https://dadosabertos.camara.leg.br/swagger/api.html" class="p-2 border rounded-lg hover:border-blue-500">Swagger Câmara</a>
-            <a target="_blank" href="https://legis.senado.leg.br/dadosabertos/api-docs/swagger-ui/index.html" class="p-2 border rounded-lg hover:border-blue-500">Swagger Senado</a>
+            <a target="_blank" href="https://dadosabertos.camara.leg.br/api/v2/" class="p-2 border rounded-lg hover:border-blue-500">API v2 Câmara</a>
           </div>
         </div>
       </section>
@@ -176,12 +170,10 @@
 
   <script>
     const CAMARA_API = 'https://dadosabertos.camara.leg.br/api/v2';
-    const SENADO_API = 'https://legis.senado.leg.br/dadosabertos';
     const TRACK_KEY = 'camara360_tracked_projects_v3';
     const NOTE_KEY = 'camara360_note_v2';
 
     const state = {
-      house: 'camara',
       currentView: 'overview',
       data: { deputados: [], orgaos: [], proposicoes: [], eventos: [] },
       apiChecks: [],
@@ -232,99 +224,39 @@
       throw last;
     }
 
-    async function fetchApi(path, params = {}, house = state.house) {
-      const base = house === 'senado' ? SENADO_API : CAMARA_API;
-      const url = new URL(`${base}${path}`);
+    async function fetchApi(path, params = {}, opts = {}) {
+      const url = new URL('/api/legislative-proxy', window.location.origin);
+      url.searchParams.set('path', path);
       Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
-      return fetchJsonWithRetry(url.toString());
+      return fetchJsonWithRetry(url.toString(), opts);
     }
 
-    async function fetchAllPages(path, params = {}, house = state.house) {
-      if (house === 'senado') return fetchApi(path, params, house);
+    async function fetchAllPages(path, params = {}, opts = {}) {
       const itens = Number(params.itens || 100);
+      const maxPages = Number(opts.maxPages || 20);
+      const maxItems = Number(opts.maxItems || 5000);
       let pagina = 1;
       let all = [];
       while (true) {
-        const data = await fetchApi(path, { ...params, itens, pagina }, house);
+        const data = await fetchApi(path, { ...params, itens, pagina });
         const arr = Array.isArray(data?.dados) ? data.dados : [];
         all = all.concat(arr);
         const hasNextLink = Array.isArray(data?.links) && data.links.some((l) => l?.rel === 'next');
-        if (!arr.length || (!hasNextLink && arr.length < itens) || pagina > 80) break;
+        if (!arr.length || (!hasNextLink && arr.length < itens) || pagina >= maxPages || all.length >= maxItems) break;
         pagina += 1;
       }
-      return { dados: all };
+      return { dados: all.slice(0, maxItems) };
     }
 
     function setSyncStatus(text){ document.getElementById('sync-status').textContent = text; }
 
-    function mapSenadoSenadores(raw){
-      const arr = raw?.ListaParlamentarEmExercicio?.Parlamentares?.Parlamentar;
-      const items = Array.isArray(arr) ? arr : arr ? [arr] : [];
-      return items.map((s) => ({
-        id: Number(s?.IdentificacaoParlamentar?.CodigoParlamentar || 0),
-        nome: s?.IdentificacaoParlamentar?.NomeParlamentar || s?.IdentificacaoParlamentar?.NomeCompletoParlamentar || 'Senador(a)',
-        siglaPartido: s?.IdentificacaoParlamentar?.SiglaPartidoParlamentar || 'N/I',
-        siglaUf: s?.IdentificacaoParlamentar?.UfParlamentar || 'N/I',
-        siglaSexo: String(s?.IdentificacaoParlamentar?.SexoParlamentar || '').toUpperCase().startsWith('F') ? 'F' : 'M',
-        email: s?.IdentificacaoParlamentar?.EmailParlamentar || '',
-        urlFoto: s?.IdentificacaoParlamentar?.UrlFotoParlamentar || '',
-      }));
-    }
-
-    function mapSenadoComissoes(raw){
-      const arr = raw?.ListaComissao?.Comissoes?.Comissao;
-      const items = Array.isArray(arr) ? arr : arr ? [arr] : [];
-      return items.map((c) => ({
-        id: Number(c?.CodigoComissao || c?.Codigo || 0),
-        apelido: c?.SiglaComissao || c?.Sigla || 'Comissão',
-        nome: c?.NomeComissao || c?.Nome || 'Comissão do Senado',
-        tipoOrgao: c?.DescricaoTipoComissao || 'Comissão',
-      }));
-    }
-
-    function mapSenadoMaterias(raw){
-      const arr = raw?.ListaMaterias?.Materias?.Materia || raw?.ListaMateria?.Materias?.Materia || raw?.ListaMateriaPesquisa?.Materias?.Materia;
-      const items = Array.isArray(arr) ? arr : arr ? [arr] : [];
-      return items.map((m) => ({
-        id: Number(m?.IdentificacaoMateria?.CodigoMateria || m?.CodigoMateria || 0) || Number(`${m?.IdentificacaoMateria?.AnoMateria || new Date().getFullYear()}${m?.IdentificacaoMateria?.NumeroMateria || 0}`),
-        siglaTipo: m?.IdentificacaoMateria?.SiglaSubtipoMateria || m?.SiglaSubtipoMateria || 'MAT',
-        numero: Number(m?.IdentificacaoMateria?.NumeroMateria || m?.NumeroMateria || 0),
-        ano: Number(m?.IdentificacaoMateria?.AnoMateria || m?.AnoMateria || new Date().getFullYear()),
-        ementa: m?.IdentificacaoMateria?.EmentaMateria || m?.EmentaMateria || 'Sem ementa',
-        relator: 'Não informado',
-        partido: 'N/I',
-        urgencia: /urgenc|urgente|imediat/i.test(m?.IdentificacaoMateria?.EmentaMateria || '') ? 'alta' : 'normal',
-        status: 'Em tramitação',
-        ultimoMovimento: 'Movimento disponível no portal do Senado',
-      }));
-    }
-
-    function mapSenadoAgenda(raw){
-      const arr = raw?.Agenda?.Eventos?.Evento || raw?.ListaEventos?.Eventos?.Evento || raw?.Agenda?.Evento;
-      const items = Array.isArray(arr) ? arr : arr ? [arr] : [];
-      return items.map((e) => {
-        const data = e?.Data || e?.DataEvento || new Date().toISOString().slice(0,10);
-        const hora = e?.Hora || e?.HoraInicio || '00:00';
-        const iso = String(data).includes('T') ? String(data) : `${String(data).slice(0,10)}T${hora}:00`;
-        return {
-          dataHoraInicio: iso,
-          descricaoTipo: e?.Tipo || e?.TipoSessao || 'Sessão',
-          descricao: e?.Descricao || e?.DescricaoEvento || e?.Assunto || 'Evento Senado',
-          orgao: { apelido: e?.SiglaComissao || 'SF' },
-          situacao: e?.Situacao || 'Prevista',
-        };
-      });
-    }
-
     async function runApiChecks(){
-      const checks = state.house === 'camara'
-        ? [['/deputados',{itens:1}], ['/orgaos',{itens:1}], ['/proposicoes',{itens:1}], ['/eventos',{itens:1}]]
-        : [['/senador/lista/atual.json',{}], ['/comissao/lista/atual.json',{}], ['/materia/pesquisa/lista',{ano:new Date().getFullYear()}], ['/agenda/atual.json',{}]];
+      const checks = [['/deputados',{itens:1}], ['/orgaos',{itens:1}], ['/proposicoes',{itens:1}], ['/eventos',{itens:1}]];
       const out = [];
       for (const [ep, params] of checks) {
         try {
-          const d = await fetchApi(ep, params, state.house);
-          const count = Array.isArray(d?.dados) ? d.dados.length : 1;
+          const d = await fetchApi(ep, params, { retries: 1, timeoutMs: 3000 });
+          const count = Array.isArray(d?.dados) ? d.dados.length : (d?.error ? 0 : 1);
           out.push({ ep, ok: true, info: `${count} item(ns)` });
         } catch (e) {
           out.push({ ep, ok: false, info: e.message });
@@ -335,47 +267,37 @@
     }
 
     async function loadHouseData(){
-      setSyncStatus('Sincronizando dados...');
+      setSyncStatus('Sincronizando dados... (pode levar alguns segundos)');
       try {
-        if (state.house === 'camara') {
-          const [deps, orgaos, props, eventos] = await Promise.all([
-            fetchAllPages('/deputados', { itens: 100, ordem: 'ASC', ordenarPor: 'nome' }, 'camara'),
-            fetchAllPages('/orgaos', { itens: 100, ordem: 'ASC', ordenarPor: 'sigla' }, 'camara'),
-            fetchAllPages('/proposicoes', { itens: 100, ordem: 'DESC', ordenarPor: 'id' }, 'camara'),
-            fetchAllPages('/eventos', {
-              dataInicio: new Date(Date.now() - 2 * 86400000).toISOString().slice(0,10),
-              dataFim: new Date(Date.now() + 15 * 86400000).toISOString().slice(0,10),
-              itens: 100,
-              ordem: 'ASC',
-              ordenarPor: 'dataHoraInicio',
-            }, 'camara'),
-          ]);
-          state.data.deputados = (deps.dados || []).map((d) => ({ ...d, email: d.email || '' }));
-          state.data.orgaos = orgaos.dados || [];
-          state.data.proposicoes = (props.dados || []).map((p) => ({
-            ...p,
-            relator: p.relator || 'Não informado',
-            partido: p.siglaTipo || 'N/I',
-            urgencia: /urgenc|urgente|imediat/i.test(p.ementa || '') ? 'alta' : 'normal',
-            status: /aprovad/i.test(p.ementa || '') ? 'Pronta para pauta' : 'Em tramitação',
-            ultimoMovimento: 'Consultar tramitação detalhada',
-          }));
-          state.data.eventos = eventos.dados || [];
-        } else {
-          const [senadores, comissoes, materias, agenda] = await Promise.all([
-            fetchApi('/senador/lista/atual.json', {}, 'senado'),
-            fetchApi('/comissao/lista/atual.json', {}, 'senado'),
-            fetchApi('/materia/pesquisa/lista', { ano: new Date().getFullYear() }, 'senado').catch(() => ({})),
-            fetchApi('/agenda/atual.json', {}, 'senado').catch(() => ({})),
-          ]);
-          state.data.deputados = mapSenadoSenadores(senadores);
-          state.data.orgaos = mapSenadoComissoes(comissoes);
-          state.data.proposicoes = mapSenadoMaterias(materias);
-          state.data.eventos = mapSenadoAgenda(agenda);
+        const [deps, orgaos, props, eventos] = await Promise.all([
+          fetchAllPages('/deputados', { itens: 100, ordem: 'ASC', ordenarPor: 'nome' }, { maxPages: 20, maxItems: 2000 }),
+          fetchAllPages('/orgaos', { itens: 100, ordem: 'ASC', ordenarPor: 'sigla' }, { maxPages: 30, maxItems: 3000 }),
+          fetchAllPages('/proposicoes', { itens: 100, ordem: 'DESC', ordenarPor: 'id' }, { maxPages: 4, maxItems: 400 }),
+          fetchAllPages('/eventos', {
+            dataInicio: new Date(Date.now() - 2 * 86400000).toISOString().slice(0,10),
+            dataFim: new Date(Date.now() + 15 * 86400000).toISOString().slice(0,10),
+            itens: 100,
+            ordem: 'ASC',
+            ordenarPor: 'dataHoraInicio',
+          }, { maxPages: 5, maxItems: 500 }),
+        ]);
+        state.data.deputados = (deps.dados || []).map((d) => ({ ...d, email: d.email || '' }));
+        state.data.orgaos = orgaos.dados || [];
+        state.data.proposicoes = (props.dados || []).map((p) => ({
+          ...p,
+          relator: p.relator || 'Não informado',
+          partido: p.siglaTipo || 'N/I',
+          urgencia: /urgenc|urgente|imediat/i.test(p.ementa || '') ? 'alta' : 'normal',
+          status: /aprovad/i.test(p.ementa || '') ? 'Pronta para pauta' : 'Em tramitação',
+          ultimoMovimento: 'Consultar tramitação detalhada',
+        }));
+        state.data.eventos = eventos.dados || [];
+        if (!state.data.deputados.length || !state.data.orgaos.length) {
+          throw new Error('Dados da Câmara retornaram vazios');
         }
         state.mockMode = false;
-        setSyncStatus(`Online (${state.house === 'camara' ? 'Câmara' : 'Senado'})`);
-        state.systemLog.unshift({ when: Date.now(), msg: `Carga completa executada: ${state.house}` });
+        setSyncStatus('Online (Câmara dos Deputados)');
+        state.systemLog.unshift({ when: Date.now(), msg: 'Carga completa executada: Câmara dos Deputados' });
       } catch (e) {
         state.data = JSON.parse(JSON.stringify(mockData));
         state.mockMode = true;
@@ -383,18 +305,17 @@
         state.systemLog.unshift({ when: Date.now(), msg: `Fallback aplicado: ${e.message}` });
       }
       document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR');
-      await runApiChecks();
-      await hydrateMissingDeputyEmails();
       renderAll();
+      runApiChecks();
+      hydrateMissingDeputyEmails().then(renderDeputies);
     }
 
     async function hydrateMissingDeputyEmails(){
-      if (state.house !== 'camara') return;
       const missing = state.data.deputados.filter((d) => !d.email && d.id).map((d) => d.id);
       const chunk = missing.slice(0, 120);
       await Promise.all(chunk.map(async (id) => {
         try {
-          const dep = await fetchApi(`/deputados/${id}`, {}, 'camara');
+          const dep = await fetchApi(`/deputados/${id}`);
           const ultimo = dep?.dados?.ultimoStatus || {};
           const email = ultimo?.email || dep?.dados?.email || '';
           const i = state.data.deputados.findIndex((d) => d.id === id);
@@ -452,9 +373,8 @@
 
     async function loadCommitteeMembersFor(orgaoId){
       if (state.committeeMembers.has(orgaoId)) return state.committeeMembers.get(orgaoId);
-      if (state.house !== 'camara') { state.committeeMembers.set(orgaoId, []); return []; }
       try {
-        const res = await fetchAllPages(`/orgaos/${orgaoId}/membros`, { itens: 100 }, 'camara');
+        const res = await fetchAllPages(`/orgaos/${orgaoId}/membros`, { itens: 100 });
         const arr = res.dados || [];
         state.committeeMembers.set(orgaoId, arr);
         return arr;
@@ -469,7 +389,7 @@
       for (const org of state.data.orgaos) {
         await loadCommitteeMembersFor(org.id);
       }
-      setSyncStatus(`Online (${state.house === 'camara' ? 'Câmara' : 'Senado'})`);
+      setSyncStatus('Online (Câmara dos Deputados)');
       renderCommittees();
     }
 
@@ -571,7 +491,7 @@
     function renderMonitor(){
       const lines = [
         `Modo: ${state.mockMode ? 'Demonstração' : 'Produção'}`,
-        `Casa ativa: ${state.house}`,
+        'Casa ativa: Câmara dos Deputados',
         `Projetos no radar: ${state.tracked.length}`,
         ...state.systemLog.slice(0, 6).map((i) => `${new Date(i.when).toLocaleTimeString('pt-BR')} · ${i.msg}`),
       ];
@@ -602,7 +522,7 @@
         overview: 'Visão Geral',
         gabinete: 'Gabinete IA',
         monitor: 'Monitor',
-        deputies: state.house === 'camara' ? 'Deputados' : 'Senadores',
+        deputies: 'Deputados',
         committees: 'Comissões',
         projects: 'Controle Legislativo',
         agenda: 'Agenda Dinâmica',
@@ -629,15 +549,6 @@
       document.getElementById('left-nav').addEventListener('click', (e) => {
         const btn = e.target.closest('.tab-btn');
         if (btn) switchView(btn.dataset.view);
-      });
-
-      document.getElementById('house-selector').addEventListener('change', async (e) => {
-        state.house = e.target.value;
-        state.deputyDetails.clear();
-        state.committeeMembers.clear();
-        state.systemLog.unshift({ when: Date.now(), msg: `Mudança de casa para ${state.house}` });
-        await loadHouseData();
-        switchView('overview');
       });
 
       ['dep-search','dep-party','dep-uf','dep-sex','dep-email-filter'].forEach((id) => document.getElementById(id).addEventListener(id === 'dep-search' ? 'input' : 'change', renderDeputies));

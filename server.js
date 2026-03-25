@@ -77,11 +77,45 @@ async function handleElectionAp(res) {
   }
 }
 
+
+async function handleLegislativeProxy(req, res) {
+  try {
+    const baseUrl = new URL(req.url, 'http://localhost');
+    const apiPath = baseUrl.searchParams.get('path') || '/deputados';
+    const upstreamBase = 'https://dadosabertos.camara.leg.br/api/v2';
+
+    const target = new URL(`${upstreamBase}${apiPath}`);
+    for (const [k, v] of baseUrl.searchParams.entries()) {
+      if (k !== 'path') target.searchParams.set(k, v);
+    }
+
+    const response = await fetch(target.toString(), {
+      headers: { accept: 'application/json' },
+    });
+
+    const text = await response.text();
+    res.writeHead(response.ok ? 200 : response.status, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+      'X-Upstream-Url': target.toString(),
+    });
+    res.end(text);
+  } catch (error) {
+    res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: 'proxy_failure', message: error.message }));
+  }
+}
+
 const server = http.createServer((req, res) => {
   const reqPath = decodeURIComponent((req.url || '/').split('?')[0]);
 
   if (reqPath === '/api/elections/ap') {
     handleElectionAp(res);
+    return;
+  }
+
+  if (reqPath === '/api/legislative-proxy') {
+    handleLegislativeProxy(req, res);
     return;
   }
 
