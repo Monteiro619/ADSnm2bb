@@ -185,6 +185,7 @@
       selectedDate: new Date().toISOString().slice(0,10),
       timer: null,
       mockMode: false,
+      loadSession: 0,
     };
 
     const mockData = {
@@ -199,6 +200,7 @@
     function nf(v){ return new Intl.NumberFormat('pt-BR').format(v || 0); }
     function dt(v){ try { return new Date(v).toLocaleString('pt-BR'); } catch { return '—'; } }
     function norm(txt){ return String(txt || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, ''); }
+    function sleep(ms){ return new Promise((resolve) => setTimeout(resolve, ms)); }
 
     async function fetchJsonWithRetry(url, opts = {}) {
       const retries = opts.retries ?? 3;
@@ -235,15 +237,20 @@
       const itens = Number(params.itens || 100);
       const maxPages = Number(opts.maxPages || 20);
       const maxItems = Number(opts.maxItems || 5000);
-      let pagina = 1;
+      const startPage = Number(opts.startPage || 1);
+      const throttleMs = Number(opts.throttleMs || 650);
+      const onPage = typeof opts.onPage === 'function' ? opts.onPage : null;
+      let pagina = startPage;
       let all = [];
       while (true) {
         const data = await fetchApi(path, { ...params, itens, pagina });
         const arr = Array.isArray(data?.dados) ? data.dados : [];
         all = all.concat(arr);
+        if (onPage && arr.length) onPage(arr, pagina);
         const hasNextLink = Array.isArray(data?.links) && data.links.some((l) => l?.rel === 'next');
         if (!arr.length || (!hasNextLink && arr.length < itens) || pagina >= maxPages || all.length >= maxItems) break;
         pagina += 1;
+        await sleep(throttleMs);
       }
       return { dados: all.slice(0, maxItems) };
     }
@@ -266,48 +273,122 @@
       document.getElementById('api-checks').innerHTML = out.map((c) => `<div class="flex justify-between p-2 rounded-lg border ${c.ok ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}"><span class="font-mono text-xs">${esc(c.ep)}</span><span class="text-xs">${c.ok ? 'OK' : 'Falha'} · ${esc(c.info)}</span></div>`).join('');
     }
 
+    function mergeUniqueById(existing, incoming){
+      const merged = [...existing];
+      const idx = new Map(existing.map((item, i) => [String(item?.id ?? `no-id-${i}`), i]));
+      for (const item of incoming) {
+        const key = String(item?.id ?? '');
+        if (!key) continue;
+        const pos = idx.get(key);
+        if (typeof pos === 'number') merged[pos] = { ...merged[pos], ...item };
+        else {
+          idx.set(key, merged.length);
+          merged.push(item);
+        }
+      }
+      return merged;
+    }
+
+    function mapProposicoesBase(list){
+      return (list || []).map((p) => ({
+        ...p,
+        relator: p.relator || 'Não informado',
+        partido: p.siglaTipo || 'N/I',
+        urgencia: /urgenc|urgente|imediat/i.test(p.ementa || '') ? 'alta' : 'normal',
+        status: /aprovad/i.test(p.ementa || '') ? 'Pronta para pauta' : 'Em tramitação',
+        ultimoMovimento: 'Consultar tramitação detalhada',
+      }));
+    }
+
     async function loadHouseData(){
+      state.loadSession += 1;
+      const currentSession = state.loadSession;
       setSyncStatus('Sincronizando dados... (pode levar alguns segundos)');
       try {
+        const eventParams = {
+          dataInicio: new Date(Date.now() - 2 * 86400000).toISOString().slice(0,10),
+          dataFim: new Date(Date.now() + 15 * 86400000).toISOString().slice(0,10),
+          itens: 100,
+          ordem: 'ASC',
+          ordenarPor: 'dataHoraInicio',
+        };
+
         const [deps, orgaos, props, eventos] = await Promise.all([
-          fetchAllPages('/deputados', { itens: 100, ordem: 'ASC', ordenarPor: 'nome' }, { maxPages: 20, maxItems: 2000 }),
-          fetchAllPages('/orgaos', { itens: 100, ordem: 'ASC', ordenarPor: 'sigla' }, { maxPages: 30, maxItems: 3000 }),
-          fetchAllPages('/proposicoes', { itens: 100, ordem: 'DESC', ordenarPor: 'id' }, { maxPages: 4, maxItems: 400 }),
-          fetchAllPages('/eventos', {
-            dataInicio: new Date(Date.now() - 2 * 86400000).toISOString().slice(0,10),
-            dataFim: new Date(Date.now() + 15 * 86400000).toISOString().slice(0,10),
-            itens: 100,
-            ordem: 'ASC',
-            ordenarPor: 'dataHoraInicio',
-          }, { maxPages: 5, maxItems: 500 }),
+          fetchApi('/deputados', { itens: 100, pagina: 1, ordem: 'ASC', ordenarPor: 'nome' }),
+          fetchApi('/orgaos', { itens: 100, pagina: 1, ordem: 'ASC', ordenarPor: 'sigla' }),
+          fetchApi('/proposicoes', { itens: 100, pagina: 1, ordem: 'DESC', ordenarPor: 'id' }),
+          fetchApi('/eventos', { ...eventParams, pagina: 1 }),
         ]);
+
+        if (currentSession !== state.loadSession) return;
+
         state.data.deputados = (deps.dados || []).map((d) => ({ ...d, email: d.email || '' }));
         state.data.orgaos = orgaos.dados || [];
-        state.data.proposicoes = (props.dados || []).map((p) => ({
-          ...p,
-          relator: p.relator || 'Não informado',
-          partido: p.siglaTipo || 'N/I',
-          urgencia: /urgenc|urgente|imediat/i.test(p.ementa || '') ? 'alta' : 'normal',
-          status: /aprovad/i.test(p.ementa || '') ? 'Pronta para pauta' : 'Em tramitação',
-          ultimoMovimento: 'Consultar tramitação detalhada',
-        }));
+        state.data.proposicoes = mapProposicoesBase(props.dados || []);
         state.data.eventos = eventos.dados || [];
         if (!state.data.deputados.length || !state.data.orgaos.length) {
           throw new Error('Dados da Câmara retornaram vazios');
         }
         state.mockMode = false;
-        setSyncStatus('Online (Câmara dos Deputados)');
-        state.systemLog.unshift({ when: Date.now(), msg: 'Carga completa executada: Câmara dos Deputados' });
+        setSyncStatus('Online (Câmara) · primeira página carregada');
+        state.systemLog.unshift({ when: Date.now(), msg: 'Carga inicial concluída (página 1)' });
+        document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR');
+        renderAll();
+        runApiChecks();
+        hydrateMissingDeputyEmails().then(renderDeputies);
+
+        const throttledRender = (() => {
+          let timer = null;
+          return () => {
+            if (timer) return;
+            timer = setTimeout(() => {
+              timer = null;
+              renderAll();
+            }, 350);
+          };
+        })();
+
+        (async () => {
+          try {
+            setSyncStatus('Online (Câmara) · carregando páginas restantes em segundo plano...');
+            const depsBg = await fetchAllPages('/deputados', { itens: 100, ordem: 'ASC', ordenarPor: 'nome' }, { startPage: 2, maxPages: 20, maxItems: 2000, throttleMs: 700 });
+            if (currentSession !== state.loadSession) return;
+            state.data.deputados = mergeUniqueById(state.data.deputados, (depsBg.dados || []).map((d) => ({ ...d, email: d.email || '' })));
+            throttledRender();
+
+            const orgaosBg = await fetchAllPages('/orgaos', { itens: 100, ordem: 'ASC', ordenarPor: 'sigla' }, { startPage: 2, maxPages: 30, maxItems: 3000, throttleMs: 700 });
+            if (currentSession !== state.loadSession) return;
+            state.data.orgaos = mergeUniqueById(state.data.orgaos, orgaosBg.dados || []);
+            throttledRender();
+
+            const propsBg = await fetchAllPages('/proposicoes', { itens: 100, ordem: 'DESC', ordenarPor: 'id' }, { startPage: 2, maxPages: 4, maxItems: 400, throttleMs: 700 });
+            if (currentSession !== state.loadSession) return;
+            state.data.proposicoes = mergeUniqueById(state.data.proposicoes, mapProposicoesBase(propsBg.dados || []));
+            throttledRender();
+
+            const eventosBg = await fetchAllPages('/eventos', eventParams, { startPage: 2, maxPages: 5, maxItems: 500, throttleMs: 700 });
+            if (currentSession !== state.loadSession) return;
+            state.data.eventos = mergeUniqueById(state.data.eventos, eventosBg.dados || []);
+            renderAll();
+
+            setSyncStatus('Online (Câmara dos Deputados) · carga completa');
+            state.systemLog.unshift({ when: Date.now(), msg: 'Carga completa finalizada em background' });
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR');
+          } catch (bgError) {
+            if (currentSession !== state.loadSession) return;
+            state.systemLog.unshift({ when: Date.now(), msg: `Background parcial: ${bgError.message}` });
+            setSyncStatus(`Online (Câmara) · carga parcial em background (${bgError.message})`);
+          }
+        })();
       } catch (e) {
         state.data = JSON.parse(JSON.stringify(mockData));
         state.mockMode = true;
         setSyncStatus(`Modo de demonstração (${e.message})`);
         state.systemLog.unshift({ when: Date.now(), msg: `Fallback aplicado: ${e.message}` });
+        document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR');
+        renderAll();
+        runApiChecks();
       }
-      document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR');
-      renderAll();
-      runApiChecks();
-      hydrateMissingDeputyEmails().then(renderDeputies);
     }
 
     async function hydrateMissingDeputyEmails(){

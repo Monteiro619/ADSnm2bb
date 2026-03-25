@@ -1,5 +1,3 @@
-const API_BASE = 'https://dadosabertos.camara.leg.br/api/v2';
-
 const els = {
   refresh: document.getElementById('liveRefresh'),
   status: document.getElementById('liveStatus'),
@@ -30,7 +28,15 @@ const fallback = [
 async function fetchEvents() {
   const start = new Date(Date.now() - 24 * 3600 * 1000).toISOString().slice(0, 10);
   const end = new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  const url = `${API_BASE}/eventos?dataInicio=${start}&dataFim=${end}&itens=120&ordem=ASC&ordenarPor=dataHoraInicio`;
+  const params = new URLSearchParams({
+    path: '/eventos',
+    dataInicio: start,
+    dataFim: end,
+    itens: '120',
+    ordem: 'ASC',
+    ordenarPor: 'dataHoraInicio',
+  });
+  const url = `/api/legislative-proxy?${params.toString()}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Erro HTTP ${res.status}`);
   const payload = await res.json();
