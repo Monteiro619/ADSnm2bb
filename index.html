@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Câmara 360 | Monitor Legislativo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .view { display: none; }
+    .view.active { display: block; }
+    .tab-active { background:#1d4ed8; color:#fff; }
+    .calendar-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+  <div id="announcer" class="sr-only" aria-live="polite"></div>
+
+  <div class="min-h-screen flex">
+    <aside class="w-72 bg-white border-r border-slate-200 hidden md:flex flex-col sticky top-0 h-screen p-5">
+      <div class="mb-6">
+        <div class="flex items-center gap-3 text-blue-700">
+          <div class="bg-blue-700 text-white p-2 rounded-lg"><i data-lucide="layout-dashboard" class="w-5 h-5"></i></div>
+          <div>
+            <h1 class="font-bold text-2xl leading-none">Câmara 360</h1>
+            <p class="text-xs text-slate-500 mt-1">UX + Confiabilidade de dados</p>
+          </div>
+        </div>
+      </div>
+
+      <nav id="left-nav" class="space-y-2">
+        <button data-view="overview" class="tab-btn tab-active w-full text-left rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2"><i data-lucide="home" class="w-4 h-4"></i>Visão Geral</button>
+        <button data-view="gabinete" class="tab-btn w-full text-left rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2"><i data-lucide="bot" class="w-4 h-4"></i>Gabinete IA</button>
+        <button data-view="monitor" class="tab-btn w-full text-left rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2"><i data-lucide="radar" class="w-4 h-4"></i>Monitor</button>
+        <button data-view="deputies" class="tab-btn w-full text-left rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i>Deputados</button>
+        <button data-view="committees" class="tab-btn w-full text-left rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2"><i data-lucide="landmark" class="w-4 h-4"></i>Comissões</button>
+        <button data-view="projects" class="tab-btn w-full text-left rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2"><i data-lucide="kanban-square" class="w-4 h-4"></i>Projetos</button>
+        <button data-view="agenda" class="tab-btn w-full text-left rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2"><i data-lucide="calendar-days" class="w-4 h-4"></i>Agenda</button>
+        <button data-view="settings" class="tab-btn w-full text-left rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2"><i data-lucide="settings" class="w-4 h-4"></i>Status do Sistema</button>
+      </nav>
+
+      <div class="mt-auto p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+        <p class="font-semibold">Sincronização</p>
+        <p id="sync-status" class="text-slate-600 mt-1">Inicializando...</p>
+      </div>
+    </aside>
+
+    <main class="flex-1 p-4 md:p-6 overflow-auto">
+      <header class="bg-white border border-slate-200 rounded-xl p-4 mb-4 flex flex-wrap gap-3 items-center justify-between">
+        <div>
+          <h2 id="view-title" class="font-bold text-xl">Visão Geral</h2>
+          <p class="text-xs text-slate-500">Atualização automática ativa · Última sincronização: <span id="last-update">--:--</span></p>
+        </div>
+        <div class="text-xs text-slate-500">Dados oficiais da Câmara dos Deputados</div>
+      </header>
+
+      <section id="view-overview" class="view active space-y-4">
+        <div id="kpi-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <h3 class="font-semibold mb-2">Resumo de atividades recentes</h3>
+            <div id="recent-activity" class="space-y-2 text-sm"></div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <h3 class="font-semibold mb-2">Alertas legislativos</h3>
+            <div id="overview-alerts" class="space-y-2 text-sm"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-gabinete" class="view space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <h3 class="font-semibold mb-2">Notebook legislativo</h3>
+            <textarea id="note-editor" class="w-full h-80 border border-slate-200 rounded-lg p-3 text-sm" placeholder="Análises, pareceres e notas técnicas..."></textarea>
+            <button id="save-note" class="mt-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-sm">Salvar rascunho</button>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4 flex flex-col">
+            <h3 class="font-semibold mb-2">Assistente IA (simulado)</h3>
+            <div id="ai-chat-log" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-3 overflow-auto space-y-2"></div>
+            <div class="mt-2 flex gap-2">
+              <input id="ai-chat-input" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Ex: sintetize o risco político do PL 1234/2024" />
+              <button id="ai-chat-send" class="px-3 py-2 rounded-lg bg-blue-700 text-white text-sm">Enviar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-monitor" class="view space-y-3">
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <h3 class="font-semibold mb-2">Radar de execução</h3>
+          <div id="monitor-log" class="space-y-2 text-sm"></div>
+        </div>
+      </section>
+
+      <section id="view-deputies" class="view space-y-3">
+        <div class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+          <input id="dep-search" class="border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Nome, e-mail ou partido" />
+          <select id="dep-party" class="border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">Partido</option></select>
+          <select id="dep-uf" class="border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">UF</option></select>
+          <select id="dep-sex" class="border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">Sexo</option><option value="M">Masculino</option><option value="F">Feminino</option></select>
+          <select id="dep-email-filter" class="border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">E-mail (todos)</option><option value="com">Com e-mail</option><option value="sem">Sem e-mail</option></select>
+        </div>
+        <div id="dep-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+      </section>
+
+      <section id="view-committees" class="view space-y-3">
+        <div class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input id="com-search" class="border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Buscar comissão" />
+          <input id="com-member-search" class="border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Buscar por membro" />
+          <button id="load-all-members" class="px-3 py-2 rounded-lg bg-slate-900 text-white text-sm">Carregar todos os membros (paginação completa)</button>
+        </div>
+        <div id="com-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+      </section>
+
+      <section id="view-projects" class="view space-y-3">
+        <div id="radar-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+        <div class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+          <input id="proj-theme" class="border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Tema / ementa" />
+          <input id="proj-party" class="border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Partido" />
+          <input id="proj-relator" class="border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Relator" />
+          <select id="proj-urgency" class="border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">Urgência (todas)</option><option value="alta">Alta</option><option value="normal">Normal</option></select>
+          <input id="proj-search" class="border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Código da proposição" />
+        </div>
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-3">
+          <div class="bg-white border border-slate-200 rounded-xl p-4 xl:col-span-2">
+            <h3 class="font-semibold mb-2">Lista avançada</h3>
+            <div id="proj-list" class="space-y-2"></div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <h3 class="font-semibold mb-2">Kanban de tramitação</h3>
+            <div class="grid grid-cols-1 gap-2 text-xs" id="proj-kanban"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-agenda" class="view space-y-3">
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 class="font-semibold">Calendário Legislativo</h3>
+            <div class="flex gap-2">
+              <button id="cal-prev" class="px-2 py-1 rounded border text-sm">◀</button>
+              <span id="cal-label" class="text-sm font-semibold"></span>
+              <button id="cal-next" class="px-2 py-1 rounded border text-sm">▶</button>
+            </div>
+          </div>
+          <div id="calendar" class="grid calendar-grid gap-1 text-xs"></div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <div class="flex flex-wrap gap-2 mb-2">
+            <select id="agenda-type" class="border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">Todos os tipos</option><option value="sessao">Sessões</option><option value="audiencia">Audiências</option><option value="votacao">Votações</option></select>
+            <input id="agenda-search" class="border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Buscar tema/órgão" />
+          </div>
+          <div id="agenda-list" class="space-y-2"></div>
+        </div>
+      </section>
+
+      <section id="view-settings" class="view space-y-3">
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <h3 class="font-semibold mb-2">Status do sistema e integrações</h3>
+          <div id="api-checks" class="space-y-2 text-sm"></div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 text-sm">
+            <a target="_blank" href="https://dadosabertos.camara.leg.br/swagger/api.html" class="p-2 border rounded-lg hover:border-blue-500">Swagger Câmara</a>
+            <a target="_blank" href="https://dadosabertos.camara.leg.br/api/v2/" class="p-2 border rounded-lg hover:border-blue-500">API v2 Câmara</a>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const CAMARA_API = 'https://dadosabertos.camara.leg.br/api/v2';
+    const TRACK_KEY = 'camara360_tracked_projects_v3';
+    const NOTE_KEY = 'camara360_note_v2';
+
+    const state = {
+      currentView: 'overview',
+      data: { deputados: [], orgaos: [], proposicoes: [], eventos: [] },
+      apiChecks: [],
+      tracked: [],
+      deputyDetails: new Map(),
+      committeeMembers: new Map(),
+      systemLog: [],
+      calendarDate: new Date(),
+      selectedDate: new Date().toISOString().slice(0,10),
+      timer: null,
+      mockMode: false,
+      loadSession: 0,
+    };
+
+    const mockData = {
+      deputados: [{ id: 1, nome: 'Dep. Demonstração', siglaPartido: 'PL', siglaUf: 'AP', siglaSexo: 'M', email: 'demo@camara.leg.br', urlFoto: '' }],
+      orgaos: [{ id: 1, apelido: 'CCJC', nome: 'Comissão de Constituição e Justiça', tipoOrgao: 'Comissão Permanente', membros: [] }],
+      proposicoes: [{ id: 999, siglaTipo: 'PL', numero: 1234, ano: 2024, ementa: 'Projeto de demonstração', relator: 'Não informado', urgencia: 'normal', status: 'Em tramitação', partido: 'N/I', ultimoMovimento: 'Sem tramitação recente' }],
+      eventos: [{ dataHoraInicio: new Date().toISOString(), descricaoTipo: 'Sessão', descricao: 'Evento de demonstração', orgao: { apelido: 'PLEN' }, situacao: 'Prevista' }],
+    };
+
+    function say(msg){ document.getElementById('announcer').textContent = msg; }
+    function esc(v){ return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+    function nf(v){ return new Intl.NumberFormat('pt-BR').format(v || 0); }
+    function dt(v){ try { return new Date(v).toLocaleString('pt-BR'); } catch { return '—'; } }
+    function norm(txt){ return String(txt || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, ''); }
+    function sleep(ms){ return new Promise((resolve) => setTimeout(resolve, ms)); }
+
+    async function fetchJsonWithRetry(url, opts = {}) {
+      const retries = opts.retries ?? 3;
+      const timeoutMs = opts.timeoutMs ?? 12000;
+      let last;
+      for (let i = 1; i <= retries; i++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(url, { signal: controller.signal, headers: { accept: 'application/json' } });
+          clearTimeout(timer);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return await res.json();
+        } catch (e) {
+          clearTimeout(timer);
+          last = e;
+          const msg = String(e.message || e);
+          const retriable = msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS') || msg.includes('aborted') || msg.includes('HTTP 5');
+          if (!retriable || i === retries) break;
+          await new Promise(r => setTimeout(r, 400 * i));
+        }
+      }
+      throw last;
+    }
+
+    async function fetchApi(path, params = {}, opts = {}) {
+      const url = new URL('/api/legislative-proxy', window.location.origin);
+      url.searchParams.set('path', path);
+      Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+      return fetchJsonWithRetry(url.toString(), opts);
+    }
+
+    async function fetchAllPages(path, params = {}, opts = {}) {
+      const itens = Number(params.itens || 100);
+      const maxPages = Number(opts.maxPages || 20);
+      const maxItems = Number(opts.maxItems || 5000);
+      const startPage = Number(opts.startPage || 1);
+      const throttleMs = Number(opts.throttleMs || 650);
+      const onPage = typeof opts.onPage === 'function' ? opts.onPage : null;
+      let pagina = startPage;
+      let all = [];
+      while (true) {
+        const data = await fetchApi(path, { ...params, itens, pagina });
+        const arr = Array.isArray(data?.dados) ? data.dados : [];
+        all = all.concat(arr);
+        if (onPage && arr.length) onPage(arr, pagina);
+        const hasNextLink = Array.isArray(data?.links) && data.links.some((l) => l?.rel === 'next');
+        if (!arr.length || (!hasNextLink && arr.length < itens) || pagina >= maxPages || all.length >= maxItems) break;
+        pagina += 1;
+        await sleep(throttleMs);
+      }
+      return { dados: all.slice(0, maxItems) };
+    }
+
+    function setSyncStatus(text){ document.getElementById('sync-status').textContent = text; }
+
+    async function runApiChecks(){
+      const checks = [['/deputados',{itens:1}], ['/orgaos',{itens:1}], ['/proposicoes',{itens:1}], ['/eventos',{itens:1}]];
+      const out = [];
+      for (const [ep, params] of checks) {
+        try {
+          const d = await fetchApi(ep, params, { retries: 1, timeoutMs: 3000 });
+          const count = Array.isArray(d?.dados) ? d.dados.length : (d?.error ? 0 : 1);
+          out.push({ ep, ok: true, info: `${count} item(ns)` });
+        } catch (e) {
+          out.push({ ep, ok: false, info: e.message });
+        }
+      }
+      state.apiChecks = out;
+      document.getElementById('api-checks').innerHTML = out.map((c) => `<div class="flex justify-between p-2 rounded-lg border ${c.ok ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}"><span class="font-mono text-xs">${esc(c.ep)}</span><span class="text-xs">${c.ok ? 'OK' : 'Falha'} · ${esc(c.info)}</span></div>`).join('');
+    }
+
+    function mergeUniqueById(existing, incoming){
+      const merged = [...existing];
+      const idx = new Map(existing.map((item, i) => [String(item?.id ?? `no-id-${i}`), i]));
+      for (const item of incoming) {
+        const key = String(item?.id ?? '');
+        if (!key) continue;
+        const pos = idx.get(key);
+        if (typeof pos === 'number') merged[pos] = { ...merged[pos], ...item };
+        else {
+          idx.set(key, merged.length);
+          merged.push(item);
+        }
+      }
+      return merged;
+    }
+
+    function mapProposicoesBase(list){
+      return (list || []).map((p) => ({
+        ...p,
+        relator: p.relator || 'Não informado',
+        partido: p.siglaTipo || 'N/I',
+        urgencia: /urgenc|urgente|imediat/i.test(p.ementa || '') ? 'alta' : 'normal',
+        status: /aprovad/i.test(p.ementa || '') ? 'Pronta para pauta' : 'Em tramitação',
+        ultimoMovimento: 'Consultar tramitação detalhada',
+      }));
+    }
+
+    async function loadHouseData(){
+      state.loadSession += 1;
+      const currentSession = state.loadSession;
+      setSyncStatus('Sincronizando dados... (pode levar alguns segundos)');
+      try {
+        const eventParams = {
+          dataInicio: new Date(Date.now() - 2 * 86400000).toISOString().slice(0,10),
+          dataFim: new Date(Date.now() + 15 * 86400000).toISOString().slice(0,10),
+          itens: 100,
+          ordem: 'ASC',
+          ordenarPor: 'dataHoraInicio',
+        };
+
+        const [deps, orgaos, props, eventos] = await Promise.all([
+          fetchApi('/deputados', { itens: 100, pagina: 1, ordem: 'ASC', ordenarPor: 'nome' }),
+          fetchApi('/orgaos', { itens: 100, pagina: 1, ordem: 'ASC', ordenarPor: 'sigla' }),
+          fetchApi('/proposicoes', { itens: 100, pagina: 1, ordem: 'DESC', ordenarPor: 'id' }),
+          fetchApi('/eventos', { ...eventParams, pagina: 1 }),
+        ]);
+
+        if (currentSession !== state.loadSession) return;
+
+        state.data.deputados = (deps.dados || []).map((d) => ({ ...d, email: d.email || '' }));
+        state.data.orgaos = orgaos.dados || [];
+        state.data.proposicoes = mapProposicoesBase(props.dados || []);
+        state.data.eventos = eventos.dados || [];
+        if (!state.data.deputados.length || !state.data.orgaos.length) {
+          throw new Error('Dados da Câmara retornaram vazios');
+        }
+        state.mockMode = false;
+        setSyncStatus('Online (Câmara) · primeira página carregada');
+        state.systemLog.unshift({ when: Date.now(), msg: 'Carga inicial concluída (página 1)' });
+        document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR');
+        renderAll();
+        runApiChecks();
+        hydrateMissingDeputyEmails().then(renderDeputies);
+
+        const throttledRender = (() => {
+          let timer = null;
+          return () => {
+            if (timer) return;
+            timer = setTimeout(() => {
+              timer = null;
+              renderAll();
+            }, 350);
+          };
+        })();
+
+        (async () => {
+          try {
+            setSyncStatus('Online (Câmara) · carregando páginas restantes em segundo plano...');
+            const depsBg = await fetchAllPages('/deputados', { itens: 100, ordem: 'ASC', ordenarPor: 'nome' }, { startPage: 2, maxPages: 20, maxItems: 2000, throttleMs: 700 });
+            if (currentSession !== state.loadSession) return;
+            state.data.deputados = mergeUniqueById(state.data.deputados, (depsBg.dados || []).map((d) => ({ ...d, email: d.email || '' })));
+            throttledRender();
+
+            const orgaosBg = await fetchAllPages('/orgaos', { itens: 100, ordem: 'ASC', ordenarPor: 'sigla' }, { startPage: 2, maxPages: 30, maxItems: 3000, throttleMs: 700 });
+            if (currentSession !== state.loadSession) return;
+            state.data.orgaos = mergeUniqueById(state.data.orgaos, orgaosBg.dados || []);
+            throttledRender();
+
+            const propsBg = await fetchAllPages('/proposicoes', { itens: 100, ordem: 'DESC', ordenarPor: 'id' }, { startPage: 2, maxPages: 4, maxItems: 400, throttleMs: 700 });
+            if (currentSession !== state.loadSession) return;
+            state.data.proposicoes = mergeUniqueById(state.data.proposicoes, mapProposicoesBase(propsBg.dados || []));
+            throttledRender();
+
+            const eventosBg = await fetchAllPages('/eventos', eventParams, { startPage: 2, maxPages: 5, maxItems: 500, throttleMs: 700 });
+            if (currentSession !== state.loadSession) return;
+            state.data.eventos = mergeUniqueById(state.data.eventos, eventosBg.dados || []);
+            renderAll();
+
+            setSyncStatus('Online (Câmara dos Deputados) · carga completa');
+            state.systemLog.unshift({ when: Date.now(), msg: 'Carga completa finalizada em background' });
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR');
+          } catch (bgError) {
+            if (currentSession !== state.loadSession) return;
+            state.systemLog.unshift({ when: Date.now(), msg: `Background parcial: ${bgError.message}` });
+            setSyncStatus(`Online (Câmara) · carga parcial em background (${bgError.message})`);
+          }
+        })();
+      } catch (e) {
+        state.data = JSON.parse(JSON.stringify(mockData));
+        state.mockMode = true;
+        setSyncStatus(`Modo de demonstração (${e.message})`);
+        state.systemLog.unshift({ when: Date.now(), msg: `Fallback aplicado: ${e.message}` });
+        document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR');
+        renderAll();
+        runApiChecks();
+      }
+    }
+
+    async function hydrateMissingDeputyEmails(){
+      const missing = state.data.deputados.filter((d) => !d.email && d.id).map((d) => d.id);
+      const chunk = missing.slice(0, 120);
+      await Promise.all(chunk.map(async (id) => {
+        try {
+          const dep = await fetchApi(`/deputados/${id}`);
+          const ultimo = dep?.dados?.ultimoStatus || {};
+          const email = ultimo?.email || dep?.dados?.email || '';
+          const i = state.data.deputados.findIndex((d) => d.id === id);
+          if (i >= 0) state.data.deputados[i].email = email;
+          state.deputyDetails.set(id, dep?.dados || {});
+        } catch {}
+      }));
+    }
+
+    function renderOverview(){
+      const kpis = [
+        ['Parlamentares ativos', state.data.deputados.length, 'users'],
+        ['Projetos monitoráveis', state.data.proposicoes.length, 'file-text'],
+        ['Comissões mapeadas', state.data.orgaos.length, 'landmark'],
+        ['Eventos próximos', state.data.eventos.length, 'calendar-days'],
+      ];
+      document.getElementById('kpi-grid').innerHTML = kpis.map(([k,v,icon]) => `<article class="bg-white border border-slate-200 rounded-xl p-4"><div class="flex justify-between"><p class="text-xs text-slate-500 uppercase">${esc(k)}</p><i data-lucide="${icon}" class="w-4 h-4 text-slate-400"></i></div><p class="text-3xl font-bold mt-1">${nf(v)}</p></article>`).join('');
+
+      const recent = state.data.eventos.slice(0, 6);
+      document.getElementById('recent-activity').innerHTML = recent.length
+        ? recent.map((e) => `<div class="p-2 border border-slate-200 rounded-lg"><p class="font-semibold">${esc(e.descricaoTipo || 'Evento')}</p><p class="text-xs text-slate-500">${esc(e.orgao?.apelido || '')} · ${dt(e.dataHoraInicio)}</p></div>`).join('')
+        : '<p class="text-slate-500">Sem atividades recentes.</p>';
+
+      const urgent = state.data.proposicoes.filter((p) => p.urgencia === 'alta').slice(0, 6);
+      document.getElementById('overview-alerts').innerHTML = urgent.length
+        ? urgent.map((p) => `<div class="p-2 border border-amber-300 bg-amber-50 rounded-lg"><p class="font-semibold">${esc(p.siglaTipo)} ${esc(p.numero)}/${esc(p.ano)}</p><p class="text-xs text-slate-600">${esc((p.ementa || '').slice(0,120))}</p></div>`).join('')
+        : '<p class="text-slate-500">Sem alertas de urgência no momento.</p>';
+    }
+
+    function normalizeSex(v){
+      const t = String(v || '').toUpperCase();
+      if (t.startsWith('F')) return 'F';
+      if (t.startsWith('M')) return 'M';
+      return '';
+    }
+
+    function renderDeputies(){
+      const q = norm(document.getElementById('dep-search').value);
+      const party = document.getElementById('dep-party').value;
+      const uf = document.getElementById('dep-uf').value;
+      const sex = document.getElementById('dep-sex').value;
+      const emailFilter = document.getElementById('dep-email-filter').value;
+      const list = state.data.deputados.filter((d) => {
+        const combined = norm(`${d.nome} ${d.siglaPartido} ${d.siglaUf} ${d.email || ''}`);
+        if (q && !combined.includes(q)) return false;
+        if (party && d.siglaPartido !== party) return false;
+        if (uf && d.siglaUf !== uf) return false;
+        if (sex && normalizeSex(d.siglaSexo) !== sex) return false;
+        if (emailFilter === 'com' && !d.email) return false;
+        if (emailFilter === 'sem' && d.email) return false;
+        return true;
+      });
+      document.getElementById('dep-grid').innerHTML = list.map((d) => `<article class="bg-white border border-slate-200 rounded-xl p-3"><div class="flex items-start gap-3"><img src="${esc(d.urlFoto || '')}" class="w-14 h-14 rounded-full bg-slate-100 object-cover" /><div class="min-w-0"><h4 class="font-semibold text-sm">${esc(d.nome || 'Parlamentar')}</h4><p class="text-xs text-slate-500">${esc(d.siglaPartido || 'N/I')} · ${esc(d.siglaUf || 'N/I')}</p><p class="text-xs text-slate-500 truncate">${esc(d.email || 'E-mail institucional não informado')}</p></div></div></article>`).join('') || '<p class="text-slate-500">Nenhum parlamentar encontrado para os filtros.</p>';
+    }
+
+    async function loadCommitteeMembersFor(orgaoId){
+      if (state.committeeMembers.has(orgaoId)) return state.committeeMembers.get(orgaoId);
+      try {
+        const res = await fetchAllPages(`/orgaos/${orgaoId}/membros`, { itens: 100 });
+        const arr = res.dados || [];
+        state.committeeMembers.set(orgaoId, arr);
+        return arr;
+      } catch {
+        state.committeeMembers.set(orgaoId, []);
+        return [];
+      }
+    }
+
+    async function loadAllCommitteeMembers(){
+      setSyncStatus('Carregando membros de todas as comissões...');
+      for (const org of state.data.orgaos) {
+        await loadCommitteeMembersFor(org.id);
+      }
+      setSyncStatus('Online (Câmara dos Deputados)');
+      renderCommittees();
+    }
+
+    function renderCommittees(){
+      const q = norm(document.getElementById('com-search').value);
+      const memberQ = norm(document.getElementById('com-member-search').value);
+      const filtered = state.data.orgaos.filter((o) => {
+        const hitCommittee = norm(`${o.apelido} ${o.nome} ${o.tipoOrgao}`).includes(q);
+        if (!hitCommittee) return false;
+        if (!memberQ) return true;
+        const members = state.committeeMembers.get(o.id) || [];
+        return members.some((m) => norm(`${m.nome || ''} ${m.siglaPartido || ''}`).includes(memberQ));
+      });
+      document.getElementById('com-grid').innerHTML = filtered.map((o) => {
+        const members = state.committeeMembers.get(o.id) || [];
+        return `<article class="bg-white border border-slate-200 rounded-xl p-3"><p class="text-xs text-slate-500">${esc(o.tipoOrgao || 'Comissão')}</p><h4 class="font-semibold">${esc(o.apelido || '')}</h4><p class="text-xs text-slate-600">${esc(o.nome || '')}</p><p class="text-xs text-slate-500 mt-1">Membros carregados: ${nf(members.length)}</p></article>`;
+      }).join('') || '<p class="text-slate-500">Nenhuma comissão encontrada para os filtros.</p>';
+    }
+
+    function projectMatchesFilters(p){
+      const theme = norm(document.getElementById('proj-theme').value);
+      const party = norm(document.getElementById('proj-party').value);
+      const relator = norm(document.getElementById('proj-relator').value);
+      const urg = document.getElementById('proj-urgency').value;
+      const code = norm(document.getElementById('proj-search').value);
+      if (theme && !norm(p.ementa).includes(theme)) return false;
+      if (party && !norm(p.partido || '').includes(party)) return false;
+      if (relator && !norm(p.relator || '').includes(relator)) return false;
+      if (urg && p.urgencia !== urg) return false;
+      if (code && !norm(`${p.siglaTipo} ${p.numero}/${p.ano}`).includes(code)) return false;
+      return true;
+    }
+
+    function renderProjects(){
+      const list = state.data.proposicoes.filter(projectMatchesFilters);
+      const trackedIds = new Set(state.tracked.map((t) => t.id));
+
+      document.getElementById('radar-grid').innerHTML = state.tracked.length
+        ? state.tracked.map((t) => `<article class="bg-amber-50 border border-amber-200 rounded-xl p-3"><p class="text-xs font-bold text-amber-700">RADAR</p><h4 class="font-semibold text-sm">${esc(t.code)}</h4><p class="text-xs text-slate-600">${esc(t.status || 'Em tramitação')}</p><p class="text-xs text-slate-500 mt-1">${esc(t.ultimoMovimento || 'Aguardando nova tramitação')}</p></article>`).join('')
+        : '<p class="text-slate-500">Nenhum projeto monitorado no radar.</p>';
+
+      document.getElementById('proj-list').innerHTML = list.map((p) => {
+        const code = `${p.siglaTipo || 'MAT'} ${p.numero || '-'} / ${p.ano || '-'}`;
+        return `<div class="border border-slate-200 rounded-lg p-2 flex items-start justify-between gap-2"><div><p class="font-semibold text-sm">${esc(code)}</p><p class="text-xs text-slate-600">${esc((p.ementa || '').slice(0,150))}</p><p class="text-xs text-slate-500 mt-1">Relator: ${esc(p.relator || 'Não informado')} · Urgência: ${esc(p.urgencia || 'normal')}</p></div><button data-action="track" data-id="${p.id}" class="text-xl leading-none">${trackedIds.has(p.id) ? '⭐' : '☆'}</button></div>`;
+      }).join('') || '<p class="text-slate-500">Nenhum projeto encontrado para os filtros avançados.</p>';
+
+      const columns = {
+        'Em tramitação': list.filter((p) => (p.status || 'Em tramitação') === 'Em tramitação'),
+        'Aguardando parecer': list.filter((p) => (p.status || '') === 'Aguardando parecer'),
+        'Pronta para pauta': list.filter((p) => (p.status || '') === 'Pronta para pauta'),
+      };
+      document.getElementById('proj-kanban').innerHTML = Object.entries(columns).map(([col, items]) => `<div class="border border-slate-200 rounded-lg p-2"><p class="font-semibold mb-1">${esc(col)} (${items.length})</p><div class="space-y-1">${items.slice(0,8).map((p) => `<div class="p-1 bg-slate-50 rounded border text-[11px]">${esc(p.siglaTipo)} ${esc(p.numero)}/${esc(p.ano)}</div>`).join('') || '<p class="text-slate-400">Sem itens</p>'}</div></div>`).join('');
+    }
+
+    function eventTypeKey(e){
+      const t = norm(`${e.descricaoTipo} ${e.descricao}`);
+      if (t.includes('vota')) return 'votacao';
+      if (t.includes('audi')) return 'audiencia';
+      return 'sessao';
+    }
+
+    function renderCalendar(){
+      const d = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth(), 1);
+      const month = d.getMonth();
+      const startWeekday = d.getDay();
+      const daysInMonth = new Date(d.getFullYear(), month + 1, 0).getDate();
+      document.getElementById('cal-label').textContent = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      const cells = [];
+      ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach((wd) => cells.push(`<div class="text-center text-xs font-semibold text-slate-500 p-1">${wd}</div>`));
+      for (let i = 0; i < startWeekday; i++) cells.push('<div></div>');
+      for (let day = 1; day <= daysInMonth; day++) {
+        const iso = new Date(d.getFullYear(), month, day).toISOString().slice(0,10);
+        const count = state.data.eventos.filter((e) => String(e.dataHoraInicio || '').slice(0,10) === iso).length;
+        const selected = state.selectedDate === iso;
+        cells.push(`<button data-day="${iso}" class="border rounded p-2 text-left ${selected ? 'bg-blue-700 text-white border-blue-700' : 'bg-white border-slate-200'}"><div class="text-xs font-semibold">${day}</div><div class="text-[10px] ${selected ? 'text-blue-100' : 'text-slate-500'}">${count} evento(s)</div></button>`);
+      }
+      document.getElementById('calendar').innerHTML = cells.join('');
+    }
+
+    function renderAgenda(){
+      renderCalendar();
+      const type = document.getElementById('agenda-type').value;
+      const q = norm(document.getElementById('agenda-search').value);
+      const list = state.data.eventos.filter((e) => {
+        const sameDay = String(e.dataHoraInicio || '').slice(0,10) === state.selectedDate;
+        if (!sameDay) return false;
+        if (type && eventTypeKey(e) !== type) return false;
+        const txt = norm(`${e.descricaoTipo} ${e.descricao} ${e.orgao?.apelido || ''}`);
+        return !q || txt.includes(q);
+      });
+      document.getElementById('agenda-list').innerHTML = list.map((e) => `<article class="border border-slate-200 rounded-lg p-2"><p class="text-xs text-slate-500">${dt(e.dataHoraInicio)}</p><h4 class="font-semibold text-sm">${esc(e.descricaoTipo || 'Evento')}</h4><p class="text-xs text-slate-600">${esc(e.orgao?.apelido || '')} · ${esc(e.descricao || '')}</p></article>`).join('') || '<p class="text-slate-500">Nenhum evento para a data selecionada.</p>';
+    }
+
+    function renderGabinete(){
+      const log = document.getElementById('ai-chat-log');
+      if (!log.innerHTML.trim()) log.innerHTML = '<div class="text-xs text-slate-500">Assistente pronto para apoiar análises legislativas.</div>';
+    }
+
+    function renderMonitor(){
+      const lines = [
+        `Modo: ${state.mockMode ? 'Demonstração' : 'Produção'}`,
+        'Casa ativa: Câmara dos Deputados',
+        `Projetos no radar: ${state.tracked.length}`,
+        ...state.systemLog.slice(0, 6).map((i) => `${new Date(i.when).toLocaleTimeString('pt-BR')} · ${i.msg}`),
+      ];
+      document.getElementById('monitor-log').innerHTML = lines.map((line) => `<div class="p-2 rounded-lg bg-slate-50 border border-slate-200">${esc(line)}</div>`).join('');
+    }
+
+    function renderAll(){
+      const parties = [...new Set(state.data.deputados.map((d) => d.siglaPartido).filter(Boolean))].sort();
+      document.getElementById('dep-party').innerHTML = '<option value="">Partido</option>' + parties.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+      const ufs = [...new Set(state.data.deputados.map((d) => d.siglaUf).filter(Boolean))].sort();
+      document.getElementById('dep-uf').innerHTML = '<option value="">UF</option>' + ufs.map((u) => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
+
+      renderOverview();
+      renderGabinete();
+      renderMonitor();
+      renderDeputies();
+      renderCommittees();
+      renderProjects();
+      renderAgenda();
+      lucide.createIcons();
+    }
+
+    function switchView(view){
+      state.currentView = view;
+      document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${view}`));
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('tab-active', b.dataset.view === view));
+      const titles = {
+        overview: 'Visão Geral',
+        gabinete: 'Gabinete IA',
+        monitor: 'Monitor',
+        deputies: 'Deputados',
+        committees: 'Comissões',
+        projects: 'Controle Legislativo',
+        agenda: 'Agenda Dinâmica',
+        settings: 'Status do Sistema',
+      };
+      document.getElementById('view-title').textContent = titles[view] || 'Câmara 360';
+      say(`Aba ${titles[view]} aberta.`);
+    }
+
+    function toggleTrack(project){
+      const i = state.tracked.findIndex((x) => x.id === project.id);
+      if (i >= 0) state.tracked.splice(i, 1);
+      else state.tracked.unshift({
+        id: project.id,
+        code: `${project.siglaTipo || 'MAT'} ${project.numero || '-'} / ${project.ano || '-'}`,
+        status: project.status || 'Em tramitação',
+        ultimoMovimento: project.ultimoMovimento || 'Acompanhar atualização oficial',
+      });
+      localStorage.setItem(TRACK_KEY, JSON.stringify(state.tracked));
+      renderProjects();
+    }
+
+    function bindEvents(){
+      document.getElementById('left-nav').addEventListener('click', (e) => {
+        const btn = e.target.closest('.tab-btn');
+        if (btn) switchView(btn.dataset.view);
+      });
+
+      ['dep-search','dep-party','dep-uf','dep-sex','dep-email-filter'].forEach((id) => document.getElementById(id).addEventListener(id === 'dep-search' ? 'input' : 'change', renderDeputies));
+      ['com-search','com-member-search'].forEach((id) => document.getElementById(id).addEventListener('input', renderCommittees));
+      ['proj-theme','proj-party','proj-relator','proj-search'].forEach((id) => document.getElementById(id).addEventListener('input', renderProjects));
+      document.getElementById('proj-urgency').addEventListener('change', renderProjects);
+      document.getElementById('agenda-type').addEventListener('change', renderAgenda);
+      document.getElementById('agenda-search').addEventListener('input', renderAgenda);
+      document.getElementById('load-all-members').addEventListener('click', loadAllCommitteeMembers);
+
+      document.body.addEventListener('click', (e) => {
+        const trackBtn = e.target.closest('[data-action="track"]');
+        if (trackBtn) {
+          const id = Number(trackBtn.dataset.id);
+          const p = state.data.proposicoes.find((x) => Number(x.id) === id);
+          if (p) toggleTrack(p);
+        }
+        const dayBtn = e.target.closest('[data-day]');
+        if (dayBtn) {
+          state.selectedDate = dayBtn.dataset.day;
+          renderAgenda();
+        }
+      });
+
+      document.getElementById('cal-prev').addEventListener('click', () => {
+        state.calendarDate = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth() - 1, 1);
+        renderAgenda();
+      });
+      document.getElementById('cal-next').addEventListener('click', () => {
+        state.calendarDate = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth() + 1, 1);
+        renderAgenda();
+      });
+
+      document.getElementById('save-note').addEventListener('click', () => {
+        localStorage.setItem(NOTE_KEY, document.getElementById('note-editor').value);
+        say('Rascunho do Gabinete IA salvo.');
+      });
+
+      document.getElementById('ai-chat-send').addEventListener('click', () => {
+        const input = document.getElementById('ai-chat-input');
+        const txt = input.value.trim();
+        if (!txt) return;
+        const log = document.getElementById('ai-chat-log');
+        log.innerHTML += `<div class="text-right"><span class="inline-block px-2 py-1 rounded-lg bg-blue-700 text-white text-xs">${esc(txt)}</span></div>`;
+        const ans = `Análise simulada: priorize constitucionalidade, impacto orçamentário e governabilidade para "${txt}".`;
+        log.innerHTML += `<div><span class="inline-block px-2 py-1 rounded-lg bg-white border text-xs">${esc(ans)}</span></div>`;
+        log.scrollTop = log.scrollHeight;
+        input.value = '';
+      });
+    }
+
+    function loadStorage(){
+      try { state.tracked = JSON.parse(localStorage.getItem(TRACK_KEY) || '[]'); } catch { state.tracked = []; }
+      document.getElementById('note-editor').value = localStorage.getItem(NOTE_KEY) || '';
+    }
+
+    async function start(){
+      loadStorage();
+      bindEvents();
+      await loadHouseData();
+      switchView('overview');
+      if (state.timer) clearInterval(state.timer);
+      state.timer = setInterval(loadHouseData, 90000);
+    }
+
+    start();
+  </script>
+</body>
+</html>
